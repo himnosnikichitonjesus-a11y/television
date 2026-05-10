@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reproductor Profesional</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+       
+        :root { --primary: #7f19e6; }
+       
+        * { box-sizing: border-box; margin:0; padding:0; }
+        html, body { height: 100%; width: 100%; overflow: hidden; background: #000; font-family: 'Inter', sans-serif; }
+       
+        .player-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+       
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+       
+        .control-top, .control-bottom, .center-play, .watermark-container {
+            opacity: 0;
+            transition: opacity 0.45s ease;
+            pointer-events: none;
+        }
+        .show-controls .control-top,
+        .show-controls .control-bottom,
+        .show-controls .center-play,
+        .show-controls .watermark-container {
+            opacity: 1;
+            pointer-events: auto;
+        }
+       
+        .control-top { 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.88) 0%, transparent 100%); 
+            position: absolute; top: 0; left: 0; right: 0; z-index: 50; 
+            padding: 2rem 1.5rem 1.2rem; 
+            display: flex; justify-content: space-between; align-items: center; 
+        }
+        .center-play { 
+            position: absolute; inset: 0; z-index: 40; 
+            display: flex; align-items: center; justify-content: center; 
+            pointer-events: auto;
+        }
+        .center-play > div { 
+            padding: 2.2rem; 
+            background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); 
+            border-radius: 9999px; border: 2px solid rgba(255,255,255,0.2); 
+        }
+       
+        .loading-overlay { 
+            position: absolute; inset: 0; z-index: 60; background: #000; 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+        }
+        .loading-dots::after { content: ' .'; animation: dots 1.4s infinite steps(4); }
+        @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+       
+        .control-bottom { 
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 50; 
+            padding: 5rem 1.5rem 2.5rem; 
+            background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.5) 60%, transparent 100%); 
+        }
+       
+        .progress-container { margin-bottom: 1.2rem; cursor: pointer; }
+        .scrubber-bg { height: 6px; background: rgba(255,255,255,0.3); border-radius: 9999px; transition: height 0.25s; }
+        .progress-container:hover .scrubber-bg { height: 9px; }
+        .progress-bar { height: 100%; background: var(--primary); border-radius: 9999px; position: relative; }
+        .progress-bar::after { 
+            content:''; position: absolute; right:-8px; top:50%; transform:translateY(-50%); 
+            width:16px; height:16px; background:var(--primary); border-radius:50%; 
+            box-shadow:0 0 14px rgba(127,25,230,0.7); opacity:0; transition:opacity 0.2s; 
+        }
+        .progress-container:hover .progress-bar::after { opacity:1; }
+       
+        .buttons-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.2rem; }
+        .left-group { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; }
+        .right-group { display: flex; align-items: center; gap: 1.2rem; }
+       
+        button { background:none; border:none; padding:8px; cursor:pointer; transition:transform 0.2s; }
+        button:hover, button:active { transform: scale(1.1); }
+        .no-copy { pointer-events:none; user-select:none; -webkit-user-drag:none; }
+       
+        /* =======================================
+           MÓVIL - MODO MINIMAL (sin fullscreen)
+        ======================================= */
+        @media (max-width: 768px) {
+            .player-wrapper:not(.fullscreen) {
+                /* Ocultar casi todo */
+                .control-bottom .progress-container,
+                .control-bottom .buttons-row > * { display: none !important; }
+                #episode-subtitle,
+                #pip-btn,
+                #rewind-10,
+                #play-pause-btn,
+                #forward-10,
+                #chapters-btn,
+                #next-episode-btn,
+                .volume-wrapper { display: none !important; }
+                
+                /* Título recortado */
+                #episode-title {
+                    font-size: 1.2rem !important;
+                    max-width: 65vw;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                
+                /* Solo controles mínimos en top */
+                .minimal-controls { display: flex !important; align-items: center; gap: 1.4rem; }
+                
+                /* Play central más grande y prominente */
+                .center-play { display: flex !important; }
+                .center-play > div { padding: 2.5rem; }
+                .center-play img { width: 100px !important; height: 100px !important; }
+                
+                .control-top { padding: 1.4rem 1.2rem 1rem; }
+                .control-bottom { padding: 2rem 1.2rem 1.4rem; background: transparent; }
+                .watermark-container { top: 14px; right: 14px; }
+                .watermark-container img { height: 40px; }
+            }
+            
+            /* En fullscreen móvil → todo visible pero compacto */
+            .player-wrapper.fullscreen {
+                .control-top { padding: 1.4rem 1.2rem 0.9rem; }
+                .control-bottom { padding: 4rem 1.2rem 2rem; }
+                .scrubber-bg { height: 5px; }
+                .progress-container:hover .scrubber-bg { height: 8px; }
+                .left-group, .right-group { gap: 1rem; }
+                .volume-wrapper { display: flex !important; }
+                #episode-title { font-size: 1.1rem !important; max-width: none; }
+                .center-play img { width: 80px !important; height: 80px !important; }
+            }
+        }
+       
+        .watermark-container { position: absolute; top: 30px; right: 30px; z-index: 55; }
+        .volume-wrapper { display: flex; align-items: center; gap: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="player-wrapper show-controls fullscreen" id="player-container">
+    <video id="video" playsinline></video>
+   
+    <div class="watermark-container">
+        <a id="watermark-link" href="https://misitio.com" target="_blank" rel="noopener">
+            <img src="https://nikichitonjesus.odoo.com/web/image/570-f83626c0/Programas-removebg-preview%20%281%29.png" alt="Marca" class="no-copy" style="height:42px; width:auto; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.6));" loading="lazy">
+        </a>
+    </div>
+   
+    <div class="control-top">
+        <div>
+            <h1 id="episode-title" class="text-2xl font-bold text-white">Niki Chiton Jesus Videos</h1>
+            <p id="episode-subtitle" class="text-sm text-slate-400">Kristo</p>
+        </div>
+        <div class="minimal-controls" style="display:flex; gap:1.4rem; align-items:center;">
+            <button id="volume-btn">
+                <img id="volume-icon" src="https://nikichitonjesus.odoo.com/web/image/587-e4437449/volumen.png" class="no-copy" style="width:32px;height:32px;" loading="lazy">
+            </button>
+            <button id="fullscreen-btn">
+                <img src="https://nikichitonjesus.odoo.com/web/image/622-49c31be4/full.png" alt="Fullscreen" class="no-copy" style="width:32px;height:32px;" loading="lazy">
+            </button>
+        </div>
+    </div>
+   
+    <div id="center-play-btn" class="center-play">
+        <div>
+            <img id="center-icon" src="https://nikichitonjesus.odoo.com/web/image/715-d5d403f0/playvid.png" alt="Play" class="no-copy" style="width:78px;height:78px;" loading="lazy">
+        </div>
+    </div>
+   
+    <div id="loading-overlay" class="loading-overlay">
+        <img id="loading-cover" src="https://www.lzmradiomiami.com/wp-content/uploads/2018/05/Dimensiones-personalizadas-660x330-px-660x330.jpeg" style="max-height:58vh; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);" loading="lazy">
+        <div style="margin-top:2.5rem; color:#fff; font-size:1.85rem; font-weight:500;">
+            Cargando<span class="loading-dots ml-2"></span>
+        </div>
+    </div>
+   
+    <div class="control-bottom">
+        <div id="progress-container" class="progress-container">
+            <div class="scrubber-bg">
+                <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.85rem; color:#ddd; font-weight:500;">
+                <span id="current-time">00:00</span>
+                <span id="duration">00:00</span>
+            </div>
+        </div>
+        <div class="buttons-row">
+            <div class="left-group">
+                <button id="rewind-10"><img src="https://video-nikichitonjesus.odoo.com/web/image/438-deea748f/-10.webp" class="no-copy" style="width:38px;height:38px;" loading="lazy"></button>
+                <button id="play-pause-btn"><img id="play-icon" src="https://nikichitonjesus.odoo.com/web/image/715-d5d403f0/playvid.png" class="no-copy" style="width:56px;height:56px;" loading="lazy"></button>
+                <button id="forward-10"><img src="https://video-nikichitonjesus.odoo.com/web/image/439-9448d521/%2B10.webp" class="no-copy" style="width:38px;height:38px;" loading="lazy"></button>
+               
+                <div class="volume-wrapper">
+                    <button id="volume-btn"><img id="volume-icon" src="https://nikichitonjesus.odoo.com/web/image/587-e4437449/volumen.png" class="no-copy" style="width:32px;height:32px;" loading="lazy"></button>
+                    <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1" style="width:120px; accent-color:#7f19e6;">
+                </div>
+            </div>
+            <div class="right-group">
+                <button id="chapters-btn"><img src="https://video-nikichitonjesus.odoo.com/web/image/445-ad116cfc/episodios.webp" class="no-copy" style="width:32px;height:32px;" loading="lazy"></button>
+                <button id="next-episode-btn" style="background:#7f19e6; color:#fff; padding:10px 20px; border-radius:9999px; font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:8px;">
+                    <img src="https://nikichitonjesus.odoo.com/web/image/1063-22720d4e/sig.png" class="no-copy" style="width:18px;height:18px;" loading="lazy"> <span>Siguiente Episodio</span>
+                </button>
+            </div>
+        </div>
+    </div>
+   
+    <div id="error-message" style="display:none; position:absolute; inset:0; z-index:70; background:rgba(0,0,0,0.92); align-items:center; justify-content:center; flex-direction:column; color:#fff;">
+        <p style="font-size:1.6rem; color:#f87171; margin-bottom:2rem;">Estamos experimentando problemas con el contenido...</p>
+        <button onclick="retryVideo()" style="background:#7f19e6; color:#fff; border:none; padding:16px 40px; border-radius:9999px; font-weight:700; font-size:1.1rem;">Reintentar</button>
+    </div>
+   
+    <div id="episodes-sidebar" style="position:absolute; top:0; right:0; bottom:0; width:380px; background:#191121; z-index:80; transform:translateX(100%); transition:transform 0.5s; border-left:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column;">
+        <div style="padding:1.5rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1);">
+            <h2 id="sidebar-title" style="font-size:1.35rem; font-weight:700; color:#fff;">Episodios</h2>
+            <button id="close-sidebar" style="padding:12px;">
+                <img src="https://nikichitonjesus.odoo.com/web/image/560-69997e09/cerrar.png" class="no-copy" style="width:26px;height:26px;" loading="lazy">
+            </button>
+        </div>
+        <div id="episodes-list" style="flex:1; overflow-y:auto; padding:1rem;"></div>
+    </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────
+// CONFIGURACIÓN
+// ────────────────────────────────────────────────
+const coverImage = 'https://video.nikichitonjesus.org/web/image/439-6b2939e0/10.webp';
+const moreEpisodesUrl = 'https://video.nikichitonjesus.org/';
+const ICONS = {
+    play: 'https://nikichitonjesus.odoo.com/web/image/715-d5d403f0/playvid.png',
+    pause: 'https://nikichitonjesus.odoo.com/web/image/716-c7a68f34/pausevid.png',
+    rewind10: 'https://video-nikichitonjesus.odoo.com/web/image/438-deea748f/-10.webp',
+    forward10: 'https://video-nikichitonjesus.odoo.com/web/image/439-9448d521/%2B10.webp',
+    volumeHigh: 'https://nikichitonjesus.odoo.com/web/image/587-e4437449/volumen.png',
+    volumeMute: 'https://nikichitonjesus.odoo.com/web/image/584-d2f5c35f/mute.png',
+    fullscreen: 'https://nikichitonjesus.odoo.com/web/image/622-49c31be4/full.png',
+    fullscreenExit: 'https://nikichitonjesus.odoo.com/web/image/623-e47eb360/Exitfull.png',
+    chapters: 'https://video-nikichitonjesus.odoo.com/web/image/445-ad116cfc/episodios.webp',
+    next: 'https://nikichitonjesus.odoo.com/web/image/1116-2df0992f/avanzar%2015s.png',
+    close: 'https://nikichitonjesus.odoo.com/web/image/560-69997e09/cerrar.png'
+};
+
+const episodes = [
+    {
+        id: 1,
+        title: 'Job-un hombre fiel',
+        src: 'https://archive.org/download/ixil1/Job0.3.mp4',
+        author: 'Niki Chiton Jesus',
+        thumbnail: 'https://video.nikichitonjesus.org/web/image/439-6b2939e0/10.webp',
+    }
+    // Agrega más episodios aquí si los tienes
+];
+
+let currentEpisodeIndex = 0;
+let hideTimer = null;
+let lastVolume = 1;
+const video = document.getElementById('video');
+const player = document.getElementById('player-container');
+const playIcon = document.getElementById('play-icon');
+const centerIcon = document.getElementById('center-icon');
+const progressBar = document.getElementById('progress-bar');
+const currentTimeEl = document.getElementById('current-time');
+const durationEl = document.getElementById('duration');
+const loadingOverlay = document.getElementById('loading-overlay');
+const errorMsg = document.getElementById('error-message');
+const fullscreenBtnImg = document.getElementById('fullscreen-btn').querySelector('img');
+const nextBtn = document.getElementById('next-episode-btn');
+const sidebarTitle = document.getElementById('sidebar-title');
+
+// ────────────────────────────────────────────────
+// FUNCIONES AUXILIARES
+// ────────────────────────────────────────────────
+function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '00:00';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
+
+function updatePlayIcons(playing) {
+    const src = playing ? ICONS.pause : ICONS.play;
+    playIcon.src = src;
+    centerIcon.src = src;
+}
+
+function showControls() {
+    player.classList.add('show-controls');
+    clearTimeout(hideTimer);
+}
+
+function scheduleHide() {
+    clearTimeout(hideTimer);
+    if (!video.paused) {
+        hideTimer = setTimeout(() => player.classList.remove('show-controls'), 4200);
+    }
+}
+
+function toggleControlsVisibility() {
+    if (player.classList.contains('show-controls')) {
+        if (!video.paused) player.classList.remove('show-controls');
+    } else {
+        player.classList.add('show-controls');
+    }
+}
+
+function updateNextButton() {
+    if (episodes.length <= 1) {
+        nextBtn.innerHTML = `<img src="${ICONS.next}" class="no-copy" style="width:20px;height:20px;"> <span>Ver más episodios</span>`;
+        nextBtn.onclick = () => window.open(moreEpisodesUrl, '_blank');
+        sidebarTitle.textContent = 'Episodio único';
+    } else {
+        nextBtn.innerHTML = `<img src="${ICONS.next}" class="no-copy" style="width:20px;height:20px;"> <span>Siguiente Episodio</span>`;
+        nextBtn.onclick = () => loadEpisode(currentEpisodeIndex + 1);
+        sidebarTitle.textContent = 'Episodios';
+    }
+}
+
+function loadEpisode(idx) {
+    if (idx < 0 || idx >= episodes.length) return;
+    currentEpisodeIndex = idx;
+   
+    const ep = episodes[idx];
+    video.src = ep.src;
+    loadingOverlay.style.display = 'flex';
+   
+    document.getElementById('episode-title').textContent = ep.title;
+    document.getElementById('episode-subtitle').textContent = ep.author;
+   
+    video.load();
+    video.play().catch(() => {});
+   
+    updateNextButton();
+    updateEpisodesList();
+    setupMediaSession();
+}
+
+function setupMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    const ep = episodes[currentEpisodeIndex];
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: ep.title,
+        artist: ep.author,
+        artwork: [{ src: coverImage, sizes: '512x512', type: 'image/jpeg' }]
+    });
+    navigator.mediaSession.setActionHandler('play', () => video.play());
+    navigator.mediaSession.setActionHandler('pause', () => video.pause());
+    navigator.mediaSession.setActionHandler('seekbackward', () => video.currentTime = Math.max(0, video.currentTime - 10));
+    navigator.mediaSession.setActionHandler('seekforward', () => video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10));
+}
+
+// ────────────────────────────────────────────────
+// EVENTOS PRINCIPALES
+// ────────────────────────────────────────────────
+function handleActivity() {
+    showControls();
+    scheduleHide();
+}
+
+player.addEventListener('mousemove', handleActivity);
+player.addEventListener('touchstart', handleActivity);
+player.addEventListener('touchmove', handleActivity);
+
+player.addEventListener('click', (e) => {
+    if (!e.target.closest('button') && e.target.id !== 'center-play-btn') {
+        toggleControlsVisibility();
+    }
+});
+
+video.addEventListener('timeupdate', () => {
+    if (!video.duration) return;
+    progressBar.style.width = `${(video.currentTime / video.duration) * 100}%`;
+    currentTimeEl.textContent = formatTime(video.currentTime);
+});
+
+video.addEventListener('loadedmetadata', () => {
+    durationEl.textContent = formatTime(video.duration);
+    loadingOverlay.style.display = 'none';
+    scheduleHide();
+});
+
+video.addEventListener('loadstart', () => loadingOverlay.style.display = 'flex');
+video.addEventListener('waiting', () => loadingOverlay.style.display = 'flex');
+video.addEventListener('playing', () => {
+    loadingOverlay.style.display = 'none';
+    updatePlayIcons(true);
+    scheduleHide();
+});
+video.addEventListener('pause', () => {
+    updatePlayIcons(false);
+    showControls();
+});
+video.addEventListener('ended', () => {
+    if (episodes.length > 1 && currentEpisodeIndex < episodes.length - 1) {
+        loadEpisode(currentEpisodeIndex + 1);
+    }
+});
+video.addEventListener('error', () => {
+    loadingOverlay.style.display = 'none';
+    errorMsg.style.display = 'flex';
+});
+
+function retryVideo() {
+    errorMsg.style.display = 'none';
+    video.load();
+    video.play().catch(() => {});
+}
+
+// ────────────────────────────────────────────────
+// CONTROLES
+// ────────────────────────────────────────────────
+function togglePlay(e) {
+    if (e) e.stopPropagation();
+    video.paused ? video.play() : video.pause();
+    showControls();
+}
+
+document.getElementById('play-pause-btn').addEventListener('click', togglePlay);
+document.getElementById('center-play-btn').addEventListener('click', togglePlay);
+
+document.getElementById('progress-container').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration;
+});
+
+document.getElementById('rewind-10').addEventListener('click', (e) => {
+    e.stopPropagation();
+    video.currentTime = Math.max(0, video.currentTime - 10);
+    showControls();
+});
+
+document.getElementById('forward-10').addEventListener('click', (e) => {
+    e.stopPropagation();
+    video.currentTime = Math.min(video.duration || 99999, video.currentTime + 10);
+    showControls();
+});
+
+const volumeSlider = document.getElementById('volume-slider');
+const volumeIcon = document.getElementById('volume-icon');
+
+volumeSlider.addEventListener('input', (e) => {
+    e.stopPropagation();
+    video.volume = volumeSlider.value;
+    volumeIcon.src = video.volume > 0 ? ICONS.volumeHigh : ICONS.volumeMute;
+});
+
+document.getElementById('volume-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (video.volume > 0) {
+        lastVolume = video.volume;
+        video.volume = 0;
+        volumeSlider.value = 0;
+        volumeIcon.src = ICONS.volumeMute;
+    } else {
+        video.volume = lastVolume;
+        volumeSlider.value = lastVolume;
+        volumeIcon.src = ICONS.volumeHigh;
+    }
+    showControls();
+});
+
+document.getElementById('fullscreen-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!document.fullscreenElement) {
+        player.requestFullscreen().catch(() => {});
+    } else {
+        document.exitFullscreen().catch(() => {});
+    }
+});
+
+document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+        fullscreenBtnImg.src = ICONS.fullscreenExit;
+        player.classList.add('fullscreen');
+    } else {
+        fullscreenBtnImg.src = ICONS.fullscreen;
+        player.classList.remove('fullscreen');
+    }
+    showControls();
+    scheduleHide();
+});
+
+document.getElementById('pip-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (document.pictureInPictureElement) {
+        document.exitPictureInPicture();
+    } else if (video.requestPictureInPicture) {
+        video.requestPictureInPicture().catch(() => {});
+    }
+});
+
+document.getElementById('chapters-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('episodes-sidebar').style.transform = 'translateX(0)';
+});
+
+document.getElementById('close-sidebar').addEventListener('click', () => {
+    document.getElementById('episodes-sidebar').style.transform = 'translateX(100%)';
+});
+
+function updateEpisodesList() {
+    const container = document.getElementById('episodes-list');
+    container.innerHTML = '';
+    episodes.forEach((ep, i) => {
+        const active = i === currentEpisodeIndex;
+        const div = document.createElement('div');
+        div.style.cssText = `display:flex; gap:16px; padding:14px; border-radius:14px; cursor:pointer; transition:all .2s; ${active ? 'background:rgba(127,25,230,0.15); border:1px solid #7f19e6;' : 'background:rgba(255,255,255,0.03);'}`;
+        div.innerHTML = `
+            <div style="width:110px; height:62px; border-radius:8px; overflow:hidden; position:relative;">
+                <img src="${ep.thumbnail || coverImage}" style="width:100%; height:100%; object-fit:cover;" class="no-copy">
+                ${active ? `<img src="${ICONS.play}" style="position:absolute; inset:0; margin:auto; width:32px; height:32px;" class="no-copy">` : ''}
+            </div>
+            <div style="flex:1;">
+                <p style="font-size:0.8rem; ${active?'color:#7f19e6;':''}">${active ? '▶ REPRODUCIENDO' : ''}</p>
+                <p style="font-weight:600; color:#fff;">${ep.id}. ${ep.title}</p>
+                <p style="font-size:0.8rem; color:#aaa;">${ep.author}</p>
+            </div>
+        `;
+        div.addEventListener('click', () => {
+            loadEpisode(i);
+            document.getElementById('episodes-sidebar').style.transform = 'translateX(100%)';
+        });
+        container.appendChild(div);
+    });
+}
+
+// ────────────────────────────────────────────────
+// INICIO
+// ────────────────────────────────────────────────
+document.getElementById('watermark-link').href = 'https://misitio.com';
+video.volume = 1;
+loadEpisode(0);
+updatePlayIcons(false);
+updateNextButton();
+updateEpisodesList();
+showControls();
+scheduleHide();
+
+// Protección anti-copia en imágenes
+document.querySelectorAll('.no-copy').forEach(el => {
+    el.addEventListener('contextmenu', e => e.preventDefault());
+    el.addEventListener('dragstart', e => e.preventDefault());
+});
+</script>
+</body>
+</html>
