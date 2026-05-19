@@ -1,5 +1,5 @@
 // =========================================================
-// watch.js — Vista del reproductor (modo cine)
+// watch.js — Vista del reproductor (modo cine) MEJORADO
 // =========================================================
 import {
   getEpisodioById, getEpisodioByDetailUrl, getSerieByUrl,
@@ -12,6 +12,7 @@ import {
 import { escapeHtml, escapeAttr } from './feed.js';
 
 let active = null; // { episodio, mediaEl, container, ctx, queue, queueIndex }
+let floatingPlayer = null; // referencia al PIP flotante
 
 export const meta = (ctx) => {
   const ep = ctx?.episodio;
@@ -28,19 +29,16 @@ export const meta = (ctx) => {
  * Devuelve { episodio, queue, serie, queueIndex } o null.
  */
 export function resolveFromUrl(pathname) {
-  // /episodio/:id
   const epDirect = pathname.match(/^\/episodio\/([^\/]+)\/?$/);
   if (epDirect) {
     const ep = getEpisodioById(epDirect[1]);
     if (ep) return buildContext(ep);
   }
-  // serie: pathname coincide con url_serie
   const serie = getSerieByUrl(pathname);
   if (serie) {
     const queue = getEpisodiosBySerieId(serie.seriesid);
     if (queue.length) return { episodio: queue[0], queue, queueIndex: 0, serie };
   }
-  // detailUrl: /serie-url/slug
   const ep = getEpisodioByDetailUrl(pathname);
   if (ep) return buildContext(ep);
   return null;
@@ -97,12 +95,10 @@ export function render(container, ctx) {
     </div>
   `;
 
-  // Wire all interactions
   active = { episodio, container, ctx, queue, queueIndex };
   setupPlayer(container, episodio, queue, queueIndex, ctx);
   setupActions(container, episodio, ctx);
 
-  // Suggested + series item navigation
   container.querySelectorAll('[data-ep-link]').forEach(el => {
     el.addEventListener('click', () => ctx.navigate(el.dataset.epLink));
   });
@@ -202,7 +198,7 @@ function seriesPanelHTML(serie, queue, currentEp) {
 }
 
 // =========================================================
-// Lógica del reproductor
+// LÓGICA DEL REPRODUCTOR (CORREGIDA)
 // =========================================================
 function setupPlayer(root, ep, queue, queueIndex, ctx) {
   const media = root.querySelector('#player-media');
@@ -219,34 +215,35 @@ function setupPlayer(root, ep, queue, queueIndex, ctx) {
 
   if (!media) return;
 
-  // Source
   const useVideo = media.tagName === 'VIDEO';
   let currentMode = useVideo ? 'video' : 'audio';
-  setMediaSrc(media, ep, currentMode);
 
-  // Subs
-  if (useVideo && ep.subtitlesUrl) {
-    const tr = document.createElement('track');
-    tr.kind = 'subtitles'; tr.src = ep.subtitlesUrl; tr.srclang = 'es'; tr.label = 'Español'; tr.default = true;
-    media.appendChild(tr);
-  }
+  // ----- 1. Función de reproducción con fallback -----
+  const tryPlay = () => {
+    media.muted = false;
+    media.play().catch(() => {
+      // Autoplay bloqueado: overlay click-to-play
+      showClickToPlay(area, media);
+    });
+  };
 
-  // Restore progress
-  const prog = getProgress(ep.id);
-  if (prog && prog.duration && prog.progress < prog.duration - 5) {
-    media.addEventListener('loadedmetadata', () => { try { media.currentTime = prog.progress; } catch {} }, { once: true });
-  }
-
-  // Autoplay con sonido (con fallback)
-  media.muted = false;
-  const tryPlay = () => media.play().catch(() => {
-    // si falla, mostrar overlay click-to-play
-    showClickToPlay(area, media);
-  });
+  // ----- 2. Eventos ANTES de asignar src -----
+  // canplay: cuando hay datos suficientes
   media.addEventListener('canplay', tryPlay, { once: true });
+  // loadedmetadata: restaurar progreso y mostrar duración
+  media.addEventListener('loadedmetadata', () => {
+    const prog = getProgress(ep.id);
+    if (prog && prog.duration && prog.progress < prog.duration - 5) {
+      try { media.currentTime = prog.progress; } catch {}
+    }
+    tTot.textContent = formatTime(media.duration);
+  }, { once: true });
 
-  // Eventos
-  media.addEventListener('play', () => { btnToggle.textContent = '❚❚'; updateMediaSession(ep); });
+  // Eventos de reproducción/pausa
+  media.addEventListener('play', () => {
+    btnToggle.textContent = '❚❚';
+    updateMediaSession(ep);
+  });
   media.addEventListener('pause', () => { btnToggle.textContent = '▶'; });
   media.addEventListener('timeupdate', () => {
     if (media.duration) {
@@ -255,34 +252,54 @@ function setupPlayer(root, ep, queue, queueIndex, ctx) {
       saveProgress(ep.id, media.currentTime, media.duration);
     }
   });
-  media.addEventListener('loadedmetadata', () => {
-    tTot.textContent = formatTime(media.duration);
-  });
   media.addEventListener('ended', () => {
     if (queueIndex < queue.length - 1) {
       ctx.navigate(queue[queueIndex + 1].detailUrl);
     }
   });
 
-  // Controles
+  // ----- 3. Asignar fuente -----
+  setMediaSrc(media, ep, currentMode);
+
+  // ----- 4. Si ya está listo, forzar intento -----
+  if (media.readyState >= 2) { // HAVE_CURRENT_DATA o más
+    tryPlay();
+  }
+
+  // ----- 5. Subtítulos (solo vídeo) -----
+  if (useVideo && ep.subtitlesUrl) {
+    const tr = document.createElement('track');
+    tr.kind = 'subtitles';
+    tr.src = ep.subtitlesUrl;
+    tr.srclang = 'es';
+    tr.label = 'Español';
+    tr.default = true;
+    media.appendChild(tr);
+  }
+
+  // ----- 6. Controles -----
   root.querySelectorAll('[data-act]').forEach(b => {
     b.addEventListener('click', (e) => {
       e.stopPropagation();
       const act = b.dataset.act;
       if (act === 'toggle') media.paused ? media.play() : media.pause();
       else if (act === 'back10') media.currentTime = Math.max(0, media.currentTime - 10);
-      else if (act === 'fwd10') media.currentTime = Math.min(media.duration||0, media.currentTime + 10);
+      else if (act === 'fwd10') media.currentTime = Math.min(media.duration || 0, media.currentTime + 10);
       else if (act === 'prev' && queueIndex > 0) ctx.navigate(queue[queueIndex - 1].detailUrl);
       else if (act === 'next' && queueIndex < queue.length - 1) ctx.navigate(queue[queueIndex + 1].detailUrl);
-      else if (act === 'mute') { media.muted = !media.muted; btnMute.textContent = media.muted ? '🔇' : '🔊'; }
+      else if (act === 'mute') {
+        media.muted = !media.muted;
+        btnMute.textContent = media.muted ? '🔇' : '🔊';
+      }
       else if (act === 'switch-mode') {
         const newMode = currentMode === 'video' ? 'audio' : 'video';
         switchMode(area, ep, newMode, ctx);
+        currentMode = newMode;
       }
       else if (act === 'toggle-queue') toggleSidePanel(side, sideInner, 'queue', ep, queue, ctx);
       else if (act === 'info') toggleSidePanel(side, sideInner, 'info', ep, queue, ctx);
-      else if (act === 'minimize') { ctx.minimizeToPip?.(ep); ctx.navigate('/'); }
-      else if (act === 'fullscreen') { area.requestFullscreen?.(); }
+      else if (act === 'minimize') minimizeToPip(media, ep, ctx);
+      else if (act === 'fullscreen') area.requestFullscreen?.();
       else if (act === 'menu') menuPop.classList.toggle('open');
       else if (act === 'subs' && ep.subtitlesUrl) {
         const tracks = media.textTracks;
@@ -291,38 +308,46 @@ function setupPlayer(root, ep, queue, queueIndex, ctx) {
     });
   });
 
-  // Velocidad/calidad menú
+  // Velocidad / calidad
   root.querySelectorAll('[data-rate]').forEach(b => {
-    b.addEventListener('click', () => { media.playbackRate = parseFloat(b.dataset.rate); menuPop.classList.remove('open'); });
+    b.addEventListener('click', () => {
+      media.playbackRate = parseFloat(b.dataset.rate);
+      menuPop.classList.remove('open');
+    });
   });
   root.querySelectorAll('[data-quality]').forEach(b => {
     b.addEventListener('click', () => {
-      const t = media.currentTime;
+      const currentTime = media.currentTime;
       const url = b.dataset.quality === 'baja' ? (ep.mediaCalidadbaja || ep.mediaVideo) : ep.mediaVideo;
       media.src = url;
-      media.addEventListener('loadedmetadata', () => { media.currentTime = t; media.play(); }, { once: true });
+      media.addEventListener('loadedmetadata', () => {
+        media.currentTime = currentTime;
+        media.play();
+      }, { once: true });
       menuPop.classList.remove('open');
     });
   });
 
-  // Seek
+  // Seek y volumen
   seek.addEventListener('input', () => {
     if (media.duration) media.currentTime = (seek.value / 100) * media.duration;
   });
-  vol.addEventListener('input', () => { media.volume = parseFloat(vol.value); media.muted = media.volume === 0; });
+  vol.addEventListener('input', () => {
+    media.volume = parseFloat(vol.value);
+    media.muted = media.volume === 0;
+  });
 
-  // Click en video toggle
   if (useVideo) {
     media.addEventListener('click', () => media.paused ? media.play() : media.pause());
   }
 
-  // Cerrar menú al click fuera
   document.addEventListener('click', () => menuPop?.classList.remove('open'));
 
-  // Exponer para PIP
+  // Exponer para posible PIP nativo
   ctx.registerPlayer?.({
     media, episodio: ep, queue, queueIndex,
-    play: () => media.play(), pause: () => media.pause(),
+    play: () => media.play(),
+    pause: () => media.pause(),
     isPaused: () => media.paused,
     next: () => queueIndex < queue.length - 1 && ctx.navigate(queue[queueIndex + 1].detailUrl),
     prev: () => queueIndex > 0 && ctx.navigate(queue[queueIndex - 1].detailUrl)
@@ -336,22 +361,34 @@ function setMediaSrc(media, ep, mode) {
 }
 
 function switchMode(area, ep, newMode, ctx) {
-  // Re-render del area de medio
-  const html = newMode === 'video'
-    ? `<video id="player-media" class="player-media" playsinline crossorigin="anonymous" preload="metadata" poster="${escapeAttr(ep.coverUrl)}"></video>`
-    : `<div class="player-audio-mode"><img src="${escapeAttr(ep.coverUrl)}" alt=""/></div><audio id="player-media" preload="metadata" crossorigin="anonymous"></audio>`;
-  // Mantener controles
+  // Guardar estado actual
+  const oldMedia = area.querySelector('#player-media');
+  const wasPlaying = oldMedia && !oldMedia.paused;
+  const currentTime = oldMedia ? oldMedia.currentTime : 0;
+
+  // Recrear el medio
+  let newHtml = '';
+  if (newMode === 'video') {
+    newHtml = `<video id="player-media" class="player-media" playsinline crossorigin="anonymous" preload="metadata" poster="${escapeAttr(ep.coverUrl)}"></video>`;
+  } else {
+    newHtml = `<div class="player-audio-mode"><img src="${escapeAttr(ep.coverUrl)}" alt=""/></div><audio id="player-media" preload="metadata" crossorigin="anonymous"></audio>`;
+  }
   const controls = area.querySelector('.player-controls');
-  area.innerHTML = html;
+  area.innerHTML = newHtml;
   area.appendChild(controls);
-  const media = area.querySelector('#player-media');
-  setMediaSrc(media, ep, newMode);
-  media.play().catch(() => {});
+
+  const newMedia = area.querySelector('#player-media');
+  setMediaSrc(newMedia, ep, newMode);
+  newMedia.addEventListener('loadedmetadata', () => {
+    newMedia.currentTime = currentTime;
+    if (wasPlaying) newMedia.play();
+  }, { once: true });
 }
 
 function toggleSidePanel(side, inner, kind, ep, queue, ctx) {
   if (side.classList.contains('open') && side.dataset.kind === kind) {
-    side.classList.remove('open'); return;
+    side.classList.remove('open');
+    return;
   }
   side.dataset.kind = kind;
   if (kind === 'queue') {
@@ -374,9 +411,6 @@ function toggleSidePanel(side, inner, kind, ep, queue, ctx) {
         ${ep.categoria ? `<div>Categoría: ${escapeHtml(ep.categoria)}</div>` : ''}
       </div>
       ${ep.allowDownload ? `<a href="${escapeAttr(ep.mediaVideo || ep.mediaUrl)}" download style="display:inline-block;margin-top:14px;padding:8px 14px;background:#ff2d55;color:#fff;border-radius:8px;font-size:13px;">⬇ Descargar</a>` : ''}`;
-    inner.querySelectorAll('[data-ep-link]').forEach(el => {
-      el.addEventListener('click', () => ctx.navigate(el.dataset.epLink));
-    });
   }
   side.classList.add('open');
   inner.querySelectorAll('[data-ep-link]').forEach(el => {
@@ -405,22 +439,32 @@ function setupActions(root, ep, ctx) {
   });
   root.querySelector('#btn-download')?.addEventListener('click', () => {
     const a = document.createElement('a');
-    a.href = ep.mediaVideo || ep.mediaUrl; a.download = ep.title; a.click();
+    a.href = ep.mediaVideo || ep.mediaUrl;
+    a.download = ep.title;
+    a.click();
   });
 }
 
 function showClickToPlay(area, media) {
+  // Evitar duplicados
+  if (area.querySelector('.click-overlay')) return;
   const ov = document.createElement('div');
+  ov.className = 'click-overlay';
   ov.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);z-index:3;cursor:pointer;color:#fff;font-size:64px;';
   ov.textContent = '▶';
-  ov.addEventListener('click', () => { media.muted = false; media.play(); ov.remove(); });
+  ov.addEventListener('click', () => {
+    media.muted = false;
+    media.play().catch(e => console.warn('play aún falla', e));
+    ov.remove();
+  });
   area.appendChild(ov);
 }
 
 function updateMediaSession(ep) {
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.metadata = new MediaMetadata({
-    title: ep.title, artist: ep.author || '',
+    title: ep.title,
+    artist: ep.author || '',
     album: ep.seriesid || '',
     artwork: [{ src: ep.coverUrl, sizes: '512x512', type: 'image/png' }]
   });
@@ -431,6 +475,146 @@ function formatDate(d) {
   catch { return d || ''; }
 }
 
+// =========================================================
+// FUNCIONALIDAD PIP (minimizar) — flotante clicable
+// =========================================================
+function minimizeToPip(media, episodio, ctx) {
+  // Si ya existe un flotante, lo cerramos primero
+  if (floatingPlayer) closeFloatingPlayer();
+
+  const isVideo = media.tagName === 'VIDEO';
+  const currentTime = media.currentTime;
+  const wasPlaying = !media.paused;
+
+  // Pausar el reproductor principal (opcional, se puede dejar sonando)
+  media.pause();
+
+  // Crear contenedor flotante
+  const floatDiv = document.createElement('div');
+  floatDiv.className = 'floating-pip';
+  floatDiv.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    background: #111;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    z-index: 10000;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    border: 1px solid #333;
+  `;
+
+  let miniMedia;
+  if (isVideo) {
+    // Clonar el video para mantener el estado
+    miniMedia = document.createElement('video');
+    miniMedia.src = media.src;
+    miniMedia.currentTime = currentTime;
+    miniMedia.muted = false; // puede sonar en PIP
+    miniMedia.autoplay = wasPlaying;
+    miniMedia.controls = false;
+    miniMedia.style.width = '100%';
+    miniMedia.style.display = 'block';
+    if (wasPlaying) miniMedia.play().catch(e => console.warn('pip video autoplay', e));
+    floatDiv.appendChild(miniMedia);
+  } else {
+    // Audio: mostrar carátula + controles simples
+    const art = document.createElement('div');
+    art.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;color:white;';
+    art.innerHTML = `
+      <img src="${escapeAttr(episodio.coverUrl)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;">
+      <div style="flex:1;overflow:hidden;">
+        <div style="font-weight:bold;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;">${escapeHtml(episodio.title)}</div>
+        <div style="font-size:12px;color:#aaa;">${escapeHtml(episodio.author || '')}</div>
+      </div>
+      <button id="pip-play-pause" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;">${wasPlaying ? '❚❚' : '▶'}</button>
+      <button id="pip-close" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">✕</button>
+    `;
+    floatDiv.appendChild(art);
+    // Control de reproducción para audio
+    const audio = new Audio(media.src);
+    audio.currentTime = currentTime;
+    if (wasPlaying) audio.play().catch(e => console.warn('pip audio autoplay', e));
+    const playPauseBtn = art.querySelector('#pip-play-pause');
+    playPauseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (audio.paused) {
+        audio.play();
+        playPauseBtn.textContent = '❚❚';
+      } else {
+        audio.pause();
+        playPauseBtn.textContent = '▶';
+      }
+    });
+    const closeBtn = art.querySelector('#pip-close');
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audio.pause();
+      closeFloatingPlayer();
+    });
+    miniMedia = audio; // para referencia
+    // Guardar función de limpieza extra
+    floatDiv._audio = audio;
+  }
+
+  // Hacerlo arrastrable (simple)
+  let isDragging = false, startX, startY, startLeft, startTop;
+  floatDiv.addEventListener('mousedown', (e) => {
+    if (e.target.closest('#pip-play-pause') || e.target.closest('#pip-close')) return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = floatDiv.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+    floatDiv.style.transition = 'none';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    let newLeft = startLeft + dx;
+    let newTop = startTop + dy;
+    newLeft = Math.min(window.innerWidth - floatDiv.offsetWidth - 10, Math.max(10, newLeft));
+    newTop = Math.min(window.innerHeight - floatDiv.offsetHeight - 10, Math.max(10, newTop));
+    floatDiv.style.left = `${newLeft}px`;
+    floatDiv.style.top = `${newTop}px`;
+    floatDiv.style.right = 'auto';
+    floatDiv.style.bottom = 'auto';
+  });
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+    floatDiv.style.transition = '';
+  });
+
+  // Al hacer clic en cualquier parte (excepto botones) navegar al episodio
+  floatDiv.addEventListener('click', (e) => {
+    if (e.target.closest('#pip-play-pause') || e.target.closest('#pip-close')) return;
+    // Navegar a la página del episodio
+    ctx.navigate(episodio.detailUrl);
+    closeFloatingPlayer();
+  });
+
+  document.body.appendChild(floatDiv);
+  floatingPlayer = { div: floatDiv, media: miniMedia, isVideo, cleanup: () => {
+    if (floatDiv._audio) floatDiv._audio.pause();
+    if (miniMedia && miniMedia.pause) miniMedia.pause();
+    floatDiv.remove();
+  }};
+}
+
+function closeFloatingPlayer() {
+  if (floatingPlayer) {
+    floatingPlayer.cleanup();
+    floatingPlayer = null;
+  }
+}
+
 export function teardown() {
+  closeFloatingPlayer();
   active = null;
 }
