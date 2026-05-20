@@ -115,11 +115,12 @@ function resolveAndRender(pathname) {
   if (wctx) {
     wctx.navigate = navigate;
     wctx.registerPlayer = registerPlayer;
-    wctx.minimizeToPip = minimizeToPip;
+    wctx.minimizeToPip = () => minimizeToPip(wctx.episodio);
+    wctx.reclaimPipMedia = reclaimPipMedia;
     watch.render(container, wctx);
     currentView = { module: watch, ctx: wctx, kind: 'watch' };
     applyMeta(watch.meta(wctx));
-    hidePip(); // estamos viendo el episodio en grande
+    hidePip();
     return;
   }
 
@@ -192,56 +193,111 @@ function setMeta(name, value, og = false) {
 }
 
 // =========================================================
-// PIP (reproductor minimizado)
+// PIP profesional — mueve el media real al mini-reproductor
 // =========================================================
-function registerPlayer(p) {
-  currentPlayer = p;
-  // Si veníamos de PIP del mismo episodio, restaurar tiempo
-  if (pipState && pipState.episodio.id === p.episodio.id) {
-    p.media.addEventListener('loadedmetadata', () => {
-      try { p.media.currentTime = pipState.currentTime || 0; } catch {}
-    }, { once: true });
-    pipState = null;
-  }
-  hidePip();
-}
+const PIP_ICONS = {
+  play:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>',
+  prev:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>',
+  next:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>',
+  expand:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 11 12l-6 5.59L6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
+};
+
+function registerPlayer(p) { currentPlayer = p; }
 
 function minimizeToPip(ep) {
   if (!currentPlayer || currentPlayer.episodio.id !== ep.id) return;
+  const media = currentPlayer.media;
+  if (!media) return;
   pipState = {
     episodio: ep,
-    currentTime: currentPlayer.media.currentTime,
+    media,
     queue: currentPlayer.queue,
-    queueIndex: currentPlayer.queueIndex
+    queueIndex: currentPlayer.queueIndex,
+    mode: media.tagName === 'VIDEO' ? 'video' : 'audio'
   };
-  showPip(ep);
+  buildPip(pipState);
+  const slot = pip.querySelector('.pip-media-slot');
+  slot.appendChild(media);
+  currentPlayer = null;
 }
 
-function showPip(ep) {
-  pip.querySelector('.pip-thumb').style.backgroundImage = `url('${ep.coverUrl}')`;
-  pip.querySelector('.pip-title').textContent = ep.title;
-  pip.querySelector('.pip-author').textContent = ep.author || '';
-  pip.classList.remove('hidden');
+function reclaimPipMedia(ep) {
+  if (!pipState || pipState.episodio.id !== ep.id) return null;
+  const m = pipState.media;
+  pipState = null;
+  hidePip();
+  return m;
+}
 
-  // re-bind controles
+function buildPip(state) {
+  const { episodio: ep, mode } = state;
+  pip.innerHTML = mode === 'video'
+    ? `<div class="pip-media-slot pip-video"></div>
+       <div class="pip-overlay">
+         <div class="pip-top">
+           <div class="pip-text">
+             <div class="pip-title">${escapeHtml(ep.title)}</div>
+             <div class="pip-author">${escapeHtml(ep.author || '')}</div>
+           </div>
+           <button data-pip-action="close" class="pip-x" title="Cerrar">${PIP_ICONS.close}</button>
+         </div>
+         <div class="pip-center">
+           <button data-pip-action="toggle" class="pip-big" title="Play/Pause">${PIP_ICONS.play}</button>
+         </div>
+         <div class="pip-bottom">
+           <button data-pip-action="expand" title="Volver a la página">${PIP_ICONS.expand}</button>
+         </div>
+       </div>`
+    : `<div class="pip-media-slot pip-audio" data-pip-action="expand" title="Volver a la página">
+         <div class="pip-thumb" style="background-image:url('${escapeAttr(ep.coverUrl)}')"></div>
+       </div>
+       <div class="pip-info" data-pip-action="expand" title="Volver a la página">
+         <div class="pip-title">${escapeHtml(ep.title)}</div>
+         <div class="pip-author">${escapeHtml(ep.author || '')}</div>
+       </div>
+       <div class="pip-controls">
+         <button data-pip-action="prev" title="Anterior">${PIP_ICONS.prev}</button>
+         <button data-pip-action="toggle" title="Play/Pause">${PIP_ICONS.play}</button>
+         <button data-pip-action="next" title="Siguiente">${PIP_ICONS.next}</button>
+         <button data-pip-action="expand" title="Ampliar">${PIP_ICONS.expand}</button>
+         <button data-pip-action="close" title="Cerrar">${PIP_ICONS.close}</button>
+       </div>`;
+  pip.classList.remove('hidden');
+  pip.dataset.mode = mode;
+
+  const media = state.media;
+  const syncBtn = () => {
+    const t = pip.querySelector('[data-pip-action="toggle"]');
+    if (t) t.innerHTML = media.paused ? PIP_ICONS.play : PIP_ICONS.pause;
+  };
+  syncBtn();
+  state._sync = syncBtn;
+  media.addEventListener('play', syncBtn);
+  media.addEventListener('pause', syncBtn);
+
   pip.querySelectorAll('[data-pip-action]').forEach(b => {
-    b.onclick = () => {
+    b.onclick = (e) => {
+      e.stopPropagation();
       const act = b.dataset.pipAction;
-      if (act === 'expand') navigate(ep.detailUrl);
-      else if (act === 'close') { hidePip(); pipState = null; }
-      else if (act === 'toggle') {
-        // No hay media activa en PIP en esta versión simplificada (audio-only persistente requería refactor mayor)
-        // Reanudar -> ir al watch
-        navigate(ep.detailUrl);
-      } else if (act === 'next' && pipState?.queue && pipState.queueIndex < pipState.queue.length - 1) {
-        navigate(pipState.queue[pipState.queueIndex + 1].detailUrl);
-      } else if (act === 'prev' && pipState?.queue && pipState.queueIndex > 0) {
-        navigate(pipState.queue[pipState.queueIndex - 1].detailUrl);
+      if (act === 'toggle') media.paused ? media.play() : media.pause();
+      else if (act === 'expand') navigate(ep.detailUrl);
+      else if (act === 'close') {
+        try { media.pause(); } catch {}
+        pipState = null;
+        hidePip();
       }
+      else if (act === 'next' && state.queueIndex < state.queue.length - 1) navigate(state.queue[state.queueIndex + 1].detailUrl);
+      else if (act === 'prev' && state.queueIndex > 0) navigate(state.queue[state.queueIndex - 1].detailUrl);
     };
   });
 }
-function hidePip() { pip.classList.add('hidden'); }
+
+function hidePip() {
+  pip.classList.add('hidden');
+  pip.innerHTML = '';
+}
 
 // =========================================================
 // Header: navegación, búsqueda, categorías
