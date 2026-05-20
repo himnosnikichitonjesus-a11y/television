@@ -32,21 +32,8 @@
 
   <main id="app-container" class="app-container"><!-- main.js inyecta aquí --></main>
 
-  <!-- Reproductor PIP persistente -->
-  <div id="pip-player" class="pip-player hidden">
-    <div class="pip-thumb"></div>
-    <div class="pip-info">
-      <div class="pip-title"></div>
-      <div class="pip-author"></div>
-    </div>
-    <div class="pip-controls">
-      <button data-pip-action="prev" title="Anterior">⏮</button>
-      <button data-pip-action="toggle" title="Play/Pause">▶</button>
-      <button data-pip-action="next" title="Siguiente">⏭</button>
-      <button data-pip-action="expand" title="Ampliar">⛶</button>
-      <button data-pip-action="close" title="Cerrar">✕</button>
-    </div>
-  </div>
+  <!-- Reproductor PIP persistente (contenido inyectado por main.js) -->
+  <div id="pip-player" class="pip-player hidden"></div>
 
   <script type="module" src="/main.js"></script>
 </body>
