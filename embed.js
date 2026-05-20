@@ -1,6 +1,6 @@
 // =========================================================
 // embed.js — Vista mínima de reproductor pantalla completa
-// URL: /embed/<detailUrl o /episodio/:id o serie>
+// URL: /embed/<detailUrl o /episodio/:id o serie>--
 // =========================================================
 import { resolveFromUrl, render as renderWatch } from './watch.js';
 
