@@ -1,5 +1,5 @@
 // =========================================================
-// feed.js — Vista del feed principal (/)
+// feed.js — Vista del feed principal (/--)
 // =========================================================
 import { feedSecciones, todasLasCategorias } from './utilidades.js';
 import { getEpisodiosBySerieId } from './episodios.js';
