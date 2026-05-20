@@ -1,6 +1,7 @@
 // =========================================================
 // memoria.js — Almacenamiento del usuario (localStorage)
 // =========================================================
+//version 2
 const KEY = 'niki.tv.memoria.v1';
 
 const defaults = {
