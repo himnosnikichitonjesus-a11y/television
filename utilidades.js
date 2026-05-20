@@ -1,5 +1,5 @@
 // =========================================================
-// utilidades.js — Algoritmo de descubrimiento, búsqueda, ranking
+// utilidades.js — Algoritmo de descubrimiento, búsqueda, ranking-2
 // =========================================================
 import { getAllEpisodios, getAllSeries, getEpisodiosBySerieId } from './episodios.js';
 import { getPreferences, getLikes, getHistory } from './memoria.js';
