@@ -48,8 +48,7 @@ const episodiosBase = [
   {
     id: 'teoria-causalista',
     date: '2026-02-03',
-    mediaVideo: 'https://lb.s3.odysee.tv/vods2.odysee.live/odysee-replays/dd57d90536480f9a751ba4429447fd5f613efce3/1770150346.mp4',
-    mediaCalidadbaja: 'https://lb.s3.odysee.tv/vods2.odysee.live/odysee-replays/dd57d90536480f9a751ba4429447fd5f613efce3/1770150346.mp4',
+    mediaVideo: 'https://archive.org/download/nikichitonjesus/OMP1NCHJ.mp4',
     coverUrl: 'https://balta-media.odoo.com/web/image/925-6ed84678/DERECHO%20PENAL%20III.png',
     title: 'La teoría causalista',
     author: 'Lemus',
