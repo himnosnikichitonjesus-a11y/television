@@ -3,6 +3,7 @@
 // El SEO real lo hace /api/share/[...slug].js (servidor) que
 // devuelve HTML con meta tags y luego el cliente hace el render.
 // =========================================================
+
 import { resolveFromUrl, render as renderWatch } from './watch.js';
 
 export const meta = (ctx) => {
