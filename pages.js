@@ -18,3 +18,4 @@ export function getPage(pathname) {
 export function listPages() {
   return Object.keys(pages);
 }
+
