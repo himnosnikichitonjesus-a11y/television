@@ -21,6 +21,7 @@ const ICONS = {
   vol:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.04v7.92A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06A7 7 0 0 1 14 18.7v2.06A9 9 0 0 0 14 3.23z"/></svg>',
   mute:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12a9 9 0 0 0-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.17v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>',
   full:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
+  fullExit: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>',
   pip:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-8v6h8V7zm2-4H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16.01H3V4.98h18v14.03z"/></svg>',
   settings:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.57-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.14.24.43.34.68.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.49.42h4c.24 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.57 1.69-.98l2.49 1c.25.1.55 0 .68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>',
   queue:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10h11v2H3zM3 6h11v2H3zM3 14h7v2H3zM16 13v8l7-4z"/></svg>'
@@ -40,17 +41,76 @@ function isEmbedMode() {
   return document.body.classList.contains('embed-mode');
 }
 
-// Inyectar estilos esenciales (barra de progreso, overlay, colores dinámicos)
+// --- Sistema de Notificaciones Modal ---
+const modal = {
+  element: null,
+  overlay: null,
+  contentElement: null,
+  init() {
+    if (this.element) return;
+    this.overlay = document.createElement('div');
+    this.overlay.className = 'nk-modal-overlay';
+    this.element = document.createElement('div');
+    this.element.className = 'nk-modal';
+    this.element.innerHTML = `
+      <div class="nk-modal-header">
+        <span class="nk-modal-title"></span>
+        <button class="nk-modal-close">&times;</button>
+      </div>
+      <div class="nk-modal-body"></div>
+    `;
+    document.body.appendChild(this.overlay);
+    document.body.appendChild(this.element);
+    this.contentElement = this.element.querySelector('.nk-modal-body');
+    this.titleElement = this.element.querySelector('.nk-modal-title');
+    const closeBtn = this.element.querySelector('.nk-modal-close');
+    closeBtn.addEventListener('click', () => this.hide());
+    this.overlay.addEventListener('click', () => this.hide());
+  },
+  show(title, content) {
+    this.init();
+    this.titleElement.textContent = title;
+    this.contentElement.innerHTML = content;
+    this.overlay.classList.add('active');
+    this.element.classList.add('active');
+  },
+  hide() {
+    if (this.overlay) this.overlay.classList.remove('active');
+    if (this.element) this.element.classList.remove('active');
+  }
+};
+
+// Función para notificaciones simples tipo toast (opcional)
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `nk-toast nk-toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Inyectar estilos esenciales (barra de progreso, overlay, colores dinámicos, modal)
 function injectEssentialStyles() {
   if (document.getElementById('watch-essential-styles')) return;
   const style = document.createElement('style');
   style.id = 'watch-essential-styles';
   style.textContent = `
-    /* Barra de progreso */
+    /* Evitar scroll horizontal */
+    body, .watch, .player-stage, .media-host {
+      overflow-x: hidden !important;
+      max-width: 100% !important;
+    }
+    /* Controles generales */
     .player-area {
       position: relative;
       overflow: hidden;
       background: var(--stage-bg, #0a0a0a);
+      height: 100%;
+      width: 100%;
     }
     .media-host {
       width: 100%;
@@ -76,6 +136,10 @@ function injectEssentialStyles() {
       object-fit: contain;
       border-radius: 12px;
       box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    }
+    /* Barra de progreso */
+    .progress-row {
+      margin-bottom: 8px;
     }
     .seekbar {
       position: relative;
@@ -234,37 +298,80 @@ function injectEssentialStyles() {
       background-position: center;
       border-radius: 4px;
     }
-    /* Centro de controles en embed */
+    /* Estilos para los botones centrales */
     .center-controls {
       position: absolute;
       bottom: 50%;
       left: 50%;
       transform: translate(-50%, 50%);
       display: flex;
-      gap: clamp(12px, 5vw, 32px);
-      background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.2));
-      backdrop-filter: blur(8px);
-      padding: clamp(8px, 2vw, 16px) clamp(16px, 4vw, 32px);
-      border-radius: 60px;
+      gap: 24px;
       z-index: 20;
-      transition: opacity 0.3s;
+      transition: opacity 0.3s, visibility 0.3s;
     }
-    .ctrl-center {
-      background: none;
-      border: none;
-      color: white;
-      width: clamp(36px, 8vw, 64px);
-      height: clamp(36px, 8vw, 64px);
+    /* Modo Normal: Botón Play elegante */
+    body:not(.embed-mode) .center-controls .ctrl-center {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      transition: transform 0.2s, background 0.2s;
       cursor: pointer;
-      filter: drop-shadow(0 2px 4px black);
+    }
+    body:not(.embed-mode) .center-controls .ctrl-center:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+    }
+    body:not(.embed-mode) .center-controls .ctrl-center svg {
+      width: 40px;
+      height: 40px;
+      filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+    }
+    /* Modo Embed: Botones centrales con degradado circular tenue */
+    body.embed-mode .center-controls {
+      gap: clamp(12px, 5vw, 32px);
+    }
+    body.embed-mode .ctrl-center {
+      background: radial-gradient(circle at center, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 80%);
+      border: none;
+      width: clamp(48px, 10vw, 70px);
+      height: clamp(48px, 10vw, 70px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
       transition: transform 0.1s;
     }
-    .ctrl-center.main { width: clamp(48px, 10vw, 80px); height: clamp(48px, 10vw, 80px); }
-    .ctrl-center svg, .ctrl-center img { width: 100%; height: 100%; }
-    /* Ajustes modo embed */
-    body.embed-mode .player-stage {
-      background: var(--stage-bg);
+    body.embed-mode .ctrl-center.main {
+      width: clamp(56px, 12vw, 84px);
+      height: clamp(56px, 12vw, 84px);
     }
+    body.embed-mode .ctrl-center svg, body.embed-mode .ctrl-center img {
+      width: 60%;
+      height: 60%;
+      filter: drop-shadow(0 0 4px black);
+    }
+    /* Ajustes específicos embed */
+    body.embed-mode .player-controls .ctrl[data-act="back10"],
+    body.embed-mode .player-controls .ctrl[data-act="fwd10"] {
+      display: none;
+    }
+    /* Ocultar controles por inactividad (ambos modos) */
+    .player-controls {
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+    .player-controls.hide-controls,
+    .center-controls.hide-controls {
+      opacity: 0;
+      visibility: hidden;
+    }
+    /* Cabecera embed */
     body.embed-mode .embed-header {
       position: absolute;
       top: 16px;
@@ -293,20 +400,107 @@ function injectEssentialStyles() {
       text-overflow: ellipsis;
       max-width: 60vw;
     }
-    body.embed-mode .player-controls.visible,
-    body.embed-mode .center-controls.visible,
-    body.embed-mode .embed-header.visible {
+    /* Estilos para el Modal */
+    .nk-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+    .nk-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: #1e1e1e;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 500px;
+      z-index: 1001;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s, transform 0.3s;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .nk-modal.active,
+    .nk-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .nk-modal.active {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .nk-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .nk-modal-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .nk-modal-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .nk-modal-close:hover {
       opacity: 1;
     }
-    body.embed-mode .player-controls:not(.visible),
-    body.embed-mode .center-controls:not(.visible),
-    body.embed-mode .embed-header:not(.visible) {
-      opacity: 0;
+    .nk-modal-body {
+      padding: 20px;
+      color: #e0e0e0;
+      line-height: 1.5;
+    }
+    .nk-modal-body input, .nk-modal-body textarea {
+      width: 100%;
+      padding: 10px;
+      background: #2c2c2c;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: white;
+      margin-top: 10px;
+      font-family: monospace;
+    }
+    /* Toast (notificaciones rápidas) */
+    .nk-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 40px;
+      z-index: 1100;
+      transition: transform 0.3s;
+      font-size: 14px;
       pointer-events: none;
     }
-    /* Scroll automático al inicio */
-    .watch {
-      scroll-margin-top: 0;
+    .nk-toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    .nk-toast-info { background: #2196f3; }
+    .nk-toast-success { background: #4caf50; }
+    .nk-toast-error { background: #f44336; }
+    /* Scroll suave */
+    html {
+      scroll-behavior: smooth;
     }
   `;
   document.head.appendChild(style);
@@ -399,6 +593,7 @@ export function render(container, ctx) {
               <button id="btn-like" class="${isLiked(episodio.id) ? 'liked' : ''}">❤ <span>${isLiked(episodio.id) ? 'Te gusta' : 'Me gusta'}</span></button>
               <button id="btn-share">↗ Compartir</button>
               <button id="btn-embed">&lt;&gt; Incrustar</button>
+              <button id="btn-report">⚠️ Reportar</button>
               ${episodio.allowDownload ? `<button id="btn-download">⬇ Descargar</button>` : ''}
             </div>
           </div>
@@ -457,8 +652,7 @@ function createMediaElement(mode, ep) {
 
 function controlsHTML(ep, hasQueue, embed) {
   const canSwitch = ep.hasVideo && ep.hasAudio;
-  // Seleccionar icono de modo según el modo actual (se actualizará dinámicamente en JS)
-  const modeIcon = IMG_ICONS.modeVideo; // placeholder
+  const modeIcon = IMG_ICONS.modeVideo;
   return `
     <div class="player-controls ${embed ? 'embed-controls' : ''}" id="player-controls">
       <div class="progress-row">
@@ -472,8 +666,8 @@ function controlsHTML(ep, hasQueue, embed) {
       <div class="controls-row">
         <button class="ctrl" data-act="toggle" id="btn-toggle" title="Play/Pause (Espacio)">${ICONS.play}</button>
         <button class="ctrl" data-act="prev" title="Anterior" ${hasQueue ? '' : 'disabled'}>${ICONS.prev}</button>
-        <button class="ctrl" data-act="back10" title="-10s (←)">${IMG_ICONS.back10}</button>
-        <button class="ctrl" data-act="fwd10" title="+10s (→)">${IMG_ICONS.fwd10}</button>
+        ${!embed ? `<button class="ctrl" data-act="back10" title="-10s (←)">${IMG_ICONS.back10}</button>` : ''}
+        ${!embed ? `<button class="ctrl" data-act="fwd10" title="+10s (→)">${IMG_ICONS.fwd10}</button>` : ''}
         <button class="ctrl" data-act="next" title="Siguiente" ${hasQueue ? '' : 'disabled'}>${ICONS.next}</button>
         <div class="volume-wrap">
           <button class="ctrl" data-act="mute" id="btn-mute" title="Silenciar (M)">${ICONS.vol}</button>
@@ -500,17 +694,20 @@ function controlsHTML(ep, hasQueue, embed) {
           </div>
         </div>
         <button class="ctrl" data-act="minimize" title="Mini reproductor (PIP)">${ICONS.pip}</button>
-        <button class="ctrl" data-act="fullscreen" title="Pantalla completa (F)">${ICONS.full}</button>
+        <button class="ctrl" data-act="fullscreen" id="btn-fullscreen" title="Pantalla completa (F)">${ICONS.full}</button>
       </div>
     </div>
   `;
 }
 
 function suggestCardHTML(ep) {
-  const tipo = ep.hasVideo ? '🎬' : '🎧';
+  // Reemplazar emojis por imágenes
+  const tipoImg = ep.hasVideo
+    ? '<img src="https://nikichitonjesus.odoo.com/web/image/1110-40385f0d/video.webp" style="width:16px; height:16px; object-fit:contain;" alt="video">'
+    : '<img src="https://nikichitonjesus.odoo.com/web/image/625-e42b8a86/audio.png" style="width:16px; height:16px; object-fit:contain;" alt="audio">';
   return `<article class="ep-card" data-ep-link="${escapeAttr(ep.detailUrl)}">
     <div class="thumb" style="background-image:url('${escapeAttr(ep.coverUrl)}')">
-      <span class="badge">${tipo}</span>
+      <span class="badge">${tipoImg}</span>
     </div>
     <div class="body">
       <div class="title">${escapeHtml(ep.title)}</div>
@@ -535,7 +732,7 @@ function seriesPanelHTML(serie, queue, currentEp) {
 }
 
 // =========================================================
-// Lógica del reproductor
+// Lógica del reproductor (mejorada)
 // =========================================================
 function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed) {
   const area = root.querySelector('#player-area');
@@ -554,10 +751,46 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
   const centerControls = root.querySelector('#center-controls');
   const embedHeader = root.querySelector('#embed-header');
   const modeBtn = root.querySelector('#btn-mode');
-  
+  const btnFullscreen = root.querySelector('#btn-fullscreen');
+
   let currentMode = initialMode;
   let controlsTimeout;
   let seekingUser = false;
+  let isFullscreen = false;
+
+  // Función para ocultar/mostrar controles
+  const hideControls = () => {
+    const ctrlGroup = root.querySelector('.player-controls');
+    if (ctrlGroup) ctrlGroup.classList.add('hide-controls');
+    if (centerControls) centerControls.classList.add('hide-controls');
+    if (embed && embedHeader) embedHeader.classList.add('hide-controls');
+  };
+  const showControls = () => {
+    const ctrlGroup = root.querySelector('.player-controls');
+    if (ctrlGroup) ctrlGroup.classList.remove('hide-controls');
+    if (centerControls) centerControls.classList.remove('hide-controls');
+    if (embed && embedHeader) embedHeader.classList.remove('hide-controls');
+    clearTimeout(controlsTimeout);
+    if (!media.paused) {
+      controlsTimeout = setTimeout(() => {
+        hideControls();
+      }, 3000);
+    }
+  };
+
+  // Inicializar visibilidad de controles
+  const initControlsVisibility = () => {
+    showControls();
+  };
+  initControlsVisibility();
+
+  // Eventos de mouse para mostrar/ocultar controles
+  area.addEventListener('mousemove', showControls);
+  area.addEventListener('mouseleave', () => {
+    if (!media.paused) {
+      hideControls();
+    }
+  });
 
   // Actualizar icono del botón de modo
   const updateModeIcon = () => {
@@ -566,13 +799,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     }
   };
   updateModeIcon();
-
-  if (embed) {
-    const ctrlGroup = root.querySelector('.player-controls');
-    if (ctrlGroup) ctrlGroup.classList.add('visible');
-    if (centerControls) centerControls.classList.add('visible');
-    if (embedHeader) embedHeader.classList.add('visible');
-  }
 
   // Subtítulos
   if (currentMode === 'video' && ep.subtitlesUrl && !media.querySelector('track')) {
@@ -666,66 +892,14 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     media.muted = media.volume === 0;
   });
 
-  const showControls = () => {
-    if (!embed) return;
-    const ctrlGroup = root.querySelector('.player-controls');
-    if (ctrlGroup) ctrlGroup.classList.add('visible');
-    if (centerControls) centerControls.classList.add('visible');
-    if (embedHeader) embedHeader.classList.add('visible');
-    clearTimeout(controlsTimeout);
-    if (!media.paused) {
-      controlsTimeout = setTimeout(() => {
-        if (ctrlGroup) ctrlGroup.classList.remove('visible');
-        if (centerControls) centerControls.classList.remove('visible');
-        if (embedHeader) embedHeader.classList.remove('visible');
-      }, 3000);
-    }
-  };
-  const hideControls = () => {
-    if (!embed) return;
-    const ctrlGroup = root.querySelector('.player-controls');
-    if (ctrlGroup) ctrlGroup.classList.remove('visible');
-    if (centerControls) centerControls.classList.remove('visible');
-    if (embedHeader) embedHeader.classList.remove('visible');
-    clearTimeout(controlsTimeout);
-  };
-
   const togglePlayPause = () => { media.paused ? media.play() : media.pause(); };
   const onAreaClick = (e) => {
     if (e.target.closest('.ctrl') || e.target.closest('.ctrl-center') || e.target.closest('.menu-wrap') || e.target.closest('.volume-wrap')) return;
-    if (embed) {
-      const ctrlGroup = root.querySelector('.player-controls');
-      const isVisible = ctrlGroup?.classList.contains('visible');
-      if (isVisible) hideControls();
-      else showControls();
-    } else {
-      togglePlayPause();
-    }
+    togglePlayPause();
   };
   area.addEventListener('click', onAreaClick);
 
-  if (embed) {
-    area.addEventListener('mousemove', showControls);
-    area.addEventListener('mouseleave', () => {
-      if (!media.paused) {
-        const ctrlGroup = root.querySelector('.player-controls');
-        if (ctrlGroup) ctrlGroup.classList.remove('visible');
-        if (centerControls) centerControls.classList.remove('visible');
-        if (embedHeader) embedHeader.classList.remove('visible');
-      }
-    });
-    showControls();
-  } else {
-    let hideTimer;
-    const showNormalControls = () => {
-      area.classList.add('show-controls');
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => { if (!media.paused) area.classList.remove('show-controls'); }, 2800);
-    };
-    area.addEventListener('mousemove', showNormalControls);
-    area.addEventListener('mouseleave', () => area.classList.remove('show-controls'));
-  }
-
+  // Acciones de botones
   root.querySelectorAll('[data-act]').forEach(b => {
     b.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -748,8 +922,15 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
         ctx.navigate('/');
       }
       else if (act === 'fullscreen') {
-        if (document.fullscreenElement) document.exitFullscreen();
-        else area.requestFullscreen?.();
+        if (!document.fullscreenElement) {
+          area.requestFullscreen?.();
+          isFullscreen = true;
+          if (btnFullscreen) btnFullscreen.innerHTML = ICONS.fullExit;
+        } else {
+          document.exitFullscreen();
+          isFullscreen = false;
+          if (btnFullscreen) btnFullscreen.innerHTML = ICONS.full;
+        }
       }
       else if (act === 'menu') menuPop.classList.toggle('open');
       else if (act === 'subs' && ep.subtitlesUrl) {
@@ -757,6 +938,17 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
         if (tr) tr.mode = tr.mode === 'showing' ? 'hidden' : 'showing';
       }
     });
+  });
+
+  // Escuchar cambios de fullscreen a nivel de documento
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+      isFullscreen = true;
+      if (btnFullscreen) btnFullscreen.innerHTML = ICONS.fullExit;
+    } else {
+      isFullscreen = false;
+      if (btnFullscreen) btnFullscreen.innerHTML = ICONS.full;
+    }
   });
 
   root.querySelectorAll('[data-rate]').forEach(b => {
@@ -791,7 +983,13 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     else if (e.code === 'ArrowUp') { e.preventDefault(); media.volume = Math.min(1, media.volume + 0.05); }
     else if (e.code === 'ArrowDown') { e.preventDefault(); media.volume = Math.max(0, media.volume - 0.05); }
     else if (e.key === 'm' || e.key === 'M') media.muted = !media.muted;
-    else if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : area.requestFullscreen?.(); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) {
+        area.requestFullscreen?.();
+      } else {
+        document.exitFullscreen();
+      }
+    }
   };
   document.addEventListener('keydown', onKey);
 
@@ -799,6 +997,8 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('click', outsideClose);
     area.removeEventListener('click', onAreaClick);
+    area.removeEventListener('mousemove', showControls);
+    area.removeEventListener('mouseleave', hideControls);
   };
 
   ctx.registerPlayer?.({
@@ -869,19 +1069,50 @@ function setupActions(root, ep, ctx) {
     e.currentTarget.classList.toggle('liked', liked);
     e.currentTarget.querySelector('span').textContent = liked ? 'Te gusta' : 'Me gusta';
   });
+  
   root.querySelector('#btn-share')?.addEventListener('click', async () => {
     const url = `${location.origin}${ep.detailUrl}`;
-    const shareUrl = `${location.origin}/share${ep.detailUrl}`;
     if (navigator.share) {
       try { await navigator.share({ title: ep.title, text: ep.description, url }); return; } catch {}
     }
-    try { await navigator.clipboard.writeText(url); alert('Enlace copiado:\n' + url + '\n\nCon preview enriquecido:\n' + shareUrl); }
-    catch { prompt('Copia este enlace:', url); }
+    modal.show('Compartir', `<p>Comparte este episodio:</p><input type="text" value="${url}" readonly><br><button id="copy-share-link">Copiar enlace</button>`);
+    setTimeout(() => {
+      document.getElementById('copy-share-link')?.addEventListener('click', () => {
+        navigator.clipboard.writeText(url);
+        modal.hide();
+        showToast('Enlace copiado al portapapeles', 'success');
+      });
+    }, 100);
   });
+  
   root.querySelector('#btn-embed')?.addEventListener('click', () => {
     const code = `<iframe src="${location.origin}/embed${ep.detailUrl}" width="560" height="315" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-    prompt('Código de incrustación:', code);
+    modal.show('Código para incrustar', `<p>Copia este código HTML para incrustar el reproductor:</p><textarea rows="4" readonly>${escapeHtml(code)}</textarea><br><button id="copy-embed-code">Copiar código</button>`);
+    setTimeout(() => {
+      document.getElementById('copy-embed-code')?.addEventListener('click', () => {
+        navigator.clipboard.writeText(code);
+        modal.hide();
+        showToast('Código copiado al portapapeles', 'success');
+      });
+    }, 100);
   });
+  
+  root.querySelector('#btn-report')?.addEventListener('click', () => {
+    modal.show('Reportar problema', `<p>¿Qué problema has encontrado?</p><textarea id="report-desc" rows="3" placeholder="Describe el problema..."></textarea><br><button id="send-report">Enviar reporte</button>`);
+    setTimeout(() => {
+      document.getElementById('send-report')?.addEventListener('click', () => {
+        const desc = document.getElementById('report-desc')?.value;
+        if (desc) {
+          console.log('Reporte enviado:', desc);
+          modal.hide();
+          showToast('Gracias por tu reporte', 'success');
+        } else {
+          showToast('Por favor describe el problema', 'error');
+        }
+      });
+    }, 100);
+  });
+  
   root.querySelector('#btn-download')?.addEventListener('click', () => {
     const a = document.createElement('a');
     a.href = ep.mediaVideo || ep.mediaUrl; a.download = ep.title; a.click();
