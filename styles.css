@@ -321,3 +321,11 @@ body.embed-mode .watch-info, body.embed-mode .watch-below { display: none; }
   .controls-row .ctrl { width: 34px; height: 34px; }
   .time-display { font-size: 11px; }
 }
+
+.badge-icon {
+  width: 20px;           /* Tamaño recomendado */
+  height: 20px;
+  object-fit: contain;   /* Mantiene la proporción */
+  vertical-align: middle;
+  margin-right: 5px;
+}
