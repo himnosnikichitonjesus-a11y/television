@@ -16,7 +16,6 @@ export function render(container, ctx) {
       ${secciones.map(sec => sectionHTML(sec)).join('')}
     </div>`;
   container.innerHTML = html;
-
   container.querySelectorAll('[data-ep]').forEach(el => {
     el.addEventListener('click', () => ctx.navigate(el.dataset.url));
   });
@@ -44,7 +43,10 @@ function sectionHTML(sec) {
 }
 
 function epCardHTML(ep) {
-  const tipo = ep.hasVideo ? '🎬 Video' : '🎧 Audio';
+  const tipo = ep.hasVideo 
+    ? `<img src="https://nikichitonjesus.odoo.com/web/image/1110-40385f0d/video.webp" alt="Video" class="badge-icon"> Video`
+    : `<img src="https://nikichitonjesus.odoo.com/web/image/625-e42b8a86/audio.png" alt="Audio" class="badge-icon"> Audio`;
+
   return `
     <article class="ep-card" data-ep data-url="${escapeAttr(ep.detailUrl)}">
       <div class="thumb" style="background-image:url('${escapeAttr(ep.coverUrl)}')">
@@ -59,10 +61,14 @@ function epCardHTML(ep) {
 
 function serieCardHTML(s) {
   const count = getEpisodiosBySerieId(s.seriesid).length;
+  
+  // Cambia esta URL por la imagen real de "Serie"
+  const serieIcon = `<img src="https://video-nikichitonjesus.odoo.com/web/image/445-ad116cfc/episodios.webp" alt="Serie" class="badge-icon">`;
+
   return `
     <article class="ep-card" data-serie data-url="${escapeAttr(s.url_serie)}">
       <div class="thumb" style="background-image:url('${escapeAttr(s.portada_serie)}')">
-        <span class="badge">📺 Serie · ${count} ep</span>
+        <span class="badge">${serieIcon} Serie · ${count} ep</span>
       </div>
       <div class="body">
         <div class="title">${escapeHtml(s.titulo_serie)}</div>
@@ -79,4 +85,5 @@ function formatDate(d) {
 export function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
 export function escapeAttr(s) { return escapeHtml(s); }
