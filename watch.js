@@ -12,7 +12,7 @@ import {
 } from './memoria.js';
 import { escapeHtml, escapeAttr } from './feed.js';
 
-// Iconos SVG estándar (solo los que no tienen reemplazo por imagen)
+// Iconos SVG estándar
 const ICONS = {
   play:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
   pause:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>',
@@ -27,7 +27,7 @@ const ICONS = {
   queue:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10h11v2H3zM3 6h11v2H3zM3 14h7v2H3zM16 13v8l7-4z"/></svg>'
 };
 
-// Iconos reemplazados por imágenes (back10, fwd10, modeVideo, modeAudio)
+// Iconos reemplazados por imágenes
 const IMG_ICONS = {
   back10: '<img src="https://video-nikichitonjesus.odoo.com/web/image/438-deea748f/-10.webp" alt="-10" style="width:100%; height:100%; object-fit:contain;">',
   fwd10:  '<img src="https://video-nikichitonjesus.odoo.com/web/image/439-9448d521/%2B10.webp" alt="+10" style="width:100%; height:100%; object-fit:contain;">',
@@ -41,7 +41,7 @@ function isEmbedMode() {
   return document.body.classList.contains('embed-mode');
 }
 
-// --- Sistema de Notificaciones Modal ---
+// --- Sistema de Notificaciones Modal (genérico) ---
 const modal = {
   element: null,
   overlay: null,
@@ -67,20 +67,25 @@ const modal = {
     closeBtn.addEventListener('click', () => this.hide());
     this.overlay.addEventListener('click', () => this.hide());
   },
-  show(title, content) {
+  show(title, content, onClose) {
     this.init();
     this.titleElement.textContent = title;
     this.contentElement.innerHTML = content;
     this.overlay.classList.add('active');
     this.element.classList.add('active');
+    this._onClose = onClose;
   },
   hide() {
     if (this.overlay) this.overlay.classList.remove('active');
     if (this.element) this.element.classList.remove('active');
+    if (this._onClose) {
+      this._onClose();
+      delete this._onClose;
+    }
   }
 };
 
-// Función para notificaciones simples tipo toast (opcional)
+// Notificación rápida tipo toast
 function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `nk-toast nk-toast-${type}`;
@@ -93,18 +98,33 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
-// Inyectar estilos esenciales (barra de progreso, overlay, colores dinámicos, modal)
+// Inyectar estilos esenciales
 function injectEssentialStyles() {
   if (document.getElementById('watch-essential-styles')) return;
   const style = document.createElement('style');
   style.id = 'watch-essential-styles';
   style.textContent = `
-    /* Evitar scroll horizontal */
+    /* Evitar scroll horizontal en general */
     body, .watch, .player-stage, .media-host {
       overflow-x: hidden !important;
       max-width: 100% !important;
     }
-    /* Controles generales */
+    /* Modo embed: sin scroll vertical ni horizontal, el reproductor ocupa todo el contenedor */
+    body.embed-mode {
+      overflow: hidden !important;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    body.embed-mode .watch {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    body.embed-mode .player-stage {
+      flex: 1;
+      min-height: 0;
+    }
     .player-area {
       position: relative;
       overflow: hidden;
@@ -189,7 +209,7 @@ function injectEssentialStyles() {
       right: 0;
       background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
       padding: 20px 16px 12px;
-      transition: opacity 0.3s, transform 0.2s;
+      transition: opacity 0.3s, visibility 0.3s;
       z-index: 10;
     }
     .controls-row {
@@ -309,29 +329,29 @@ function injectEssentialStyles() {
       z-index: 20;
       transition: opacity 0.3s, visibility 0.3s;
     }
-    /* Modo Normal: Botón Play elegante */
+    /* Modo Normal: Botón Play elegante (blanco con contraste) */
     body:not(.embed-mode) .center-controls .ctrl-center {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(0,0,0,0.6);
       border-radius: 50%;
       width: 70px;
       height: 70px;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 0 20px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.2);
       transition: transform 0.2s, background 0.2s;
       cursor: pointer;
-    }
-    body:not(.embed-mode) .center-controls .ctrl-center:hover {
-      transform: scale(1.05);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
     }
     body:not(.embed-mode) .center-controls .ctrl-center svg {
       width: 40px;
       height: 40px;
-      filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+      color: white;
+      filter: drop-shadow(0 0 2px black);
+    }
+    body:not(.embed-mode) .center-controls .ctrl-center:hover {
+      transform: scale(1.05);
+      background: rgba(0,0,0,0.8);
     }
     /* Modo Embed: Botones centrales con degradado circular tenue */
     body.embed-mode .center-controls {
@@ -357,15 +377,7 @@ function injectEssentialStyles() {
       height: 60%;
       filter: drop-shadow(0 0 4px black);
     }
-    /* Ajustes específicos embed */
-    body.embed-mode .player-controls .ctrl[data-act="back10"],
-    body.embed-mode .player-controls .ctrl[data-act="fwd10"] {
-      display: none;
-    }
-    /* Ocultar controles por inactividad (ambos modos) */
-    .player-controls {
-      transition: opacity 0.3s, visibility 0.3s;
-    }
+    /* Ocultar controles por inactividad */
     .player-controls.hide-controls,
     .center-controls.hide-controls {
       opacity: 0;
@@ -467,17 +479,19 @@ function injectEssentialStyles() {
       color: #e0e0e0;
       line-height: 1.5;
     }
-    .nk-modal-body input, .nk-modal-body textarea {
-      width: 100%;
-      padding: 10px;
-      background: #2c2c2c;
-      border: 1px solid #444;
-      border-radius: 8px;
+    .nk-modal-body button {
+      background: #333;
+      border: none;
       color: white;
-      margin-top: 10px;
-      font-family: monospace;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 8px;
     }
-    /* Toast (notificaciones rápidas) */
+    .nk-modal-body button:hover {
+      background: #555;
+    }
+    /* Toast */
     .nk-toast {
       position: fixed;
       bottom: 20px;
@@ -541,9 +555,11 @@ function buildContext(ep) {
 
 export function render(container, ctx) {
   injectEssentialStyles();
-  // Forzar scroll al inicio
-  window.scrollTo(0, 0);
-  if (container.scrollTo) container.scrollTo(0, 0);
+  // Forzar scroll al inicio (solo en modo normal)
+  if (!isEmbedMode()) {
+    window.scrollTo(0, 0);
+    if (container.scrollTo) container.scrollTo(0, 0);
+  }
 
   const { episodio, queue, queueIndex, serie } = ctx;
   const sugeridos = recomendar(episodio, 8);
@@ -653,6 +669,7 @@ function createMediaElement(mode, ep) {
 function controlsHTML(ep, hasQueue, embed) {
   const canSwitch = ep.hasVideo && ep.hasAudio;
   const modeIcon = IMG_ICONS.modeVideo;
+  // En embed, ocultamos el botón de PIP
   return `
     <div class="player-controls ${embed ? 'embed-controls' : ''}" id="player-controls">
       <div class="progress-row">
@@ -693,7 +710,7 @@ function controlsHTML(ep, hasQueue, embed) {
             ${ep.subtitlesUrl ? `<div class="menu-section">Subtítulos</div><button data-act="subs">Activar/Desactivar</button>` : ''}
           </div>
         </div>
-        <button class="ctrl" data-act="minimize" title="Mini reproductor (PIP)">${ICONS.pip}</button>
+        ${!embed ? `<button class="ctrl" data-act="minimize" title="Mini reproductor (PIP)">${ICONS.pip}</button>` : ''}
         <button class="ctrl" data-act="fullscreen" id="btn-fullscreen" title="Pantalla completa (F)">${ICONS.full}</button>
       </div>
     </div>
@@ -701,7 +718,6 @@ function controlsHTML(ep, hasQueue, embed) {
 }
 
 function suggestCardHTML(ep) {
-  // Reemplazar emojis por imágenes
   const tipoImg = ep.hasVideo
     ? '<img src="https://nikichitonjesus.odoo.com/web/image/1110-40385f0d/video.webp" style="width:16px; height:16px; object-fit:contain;" alt="video">'
     : '<img src="https://nikichitonjesus.odoo.com/web/image/625-e42b8a86/audio.png" style="width:16px; height:16px; object-fit:contain;" alt="audio">';
@@ -732,7 +748,7 @@ function seriesPanelHTML(serie, queue, currentEp) {
 }
 
 // =========================================================
-// Lógica del reproductor (mejorada)
+// Lógica del reproductor
 // =========================================================
 function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed) {
   const area = root.querySelector('#player-area');
@@ -758,7 +774,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
   let seekingUser = false;
   let isFullscreen = false;
 
-  // Función para ocultar/mostrar controles
   const hideControls = () => {
     const ctrlGroup = root.querySelector('.player-controls');
     if (ctrlGroup) ctrlGroup.classList.add('hide-controls');
@@ -778,21 +793,14 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     }
   };
 
-  // Inicializar visibilidad de controles
-  const initControlsVisibility = () => {
-    showControls();
-  };
-  initControlsVisibility();
+  // Inicializar visibilidad
+  showControls();
 
-  // Eventos de mouse para mostrar/ocultar controles
   area.addEventListener('mousemove', showControls);
   area.addEventListener('mouseleave', () => {
-    if (!media.paused) {
-      hideControls();
-    }
+    if (!media.paused) hideControls();
   });
 
-  // Actualizar icono del botón de modo
   const updateModeIcon = () => {
     if (modeBtn) {
       modeBtn.innerHTML = currentMode === 'video' ? IMG_ICONS.modeVideo : IMG_ICONS.modeAudio;
@@ -800,14 +808,12 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
   };
   updateModeIcon();
 
-  // Subtítulos
   if (currentMode === 'video' && ep.subtitlesUrl && !media.querySelector('track')) {
     const tr = document.createElement('track');
     tr.kind = 'subtitles'; tr.src = ep.subtitlesUrl; tr.srclang = 'es'; tr.label = 'Español'; tr.default = true;
     media.appendChild(tr);
   }
 
-  // Restaurar progreso
   const prog = getProgress(ep.id);
   if (prog && prog.duration && prog.progress < prog.duration - 5 && media.currentTime < 1) {
     const restore = () => { try { media.currentTime = prog.progress; } catch {} };
@@ -899,7 +905,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
   };
   area.addEventListener('click', onAreaClick);
 
-  // Acciones de botones
   root.querySelectorAll('[data-act]').forEach(b => {
     b.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -940,7 +945,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     });
   });
 
-  // Escuchar cambios de fullscreen a nivel de documento
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
       isFullscreen = true;
@@ -998,7 +1002,7 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     document.removeEventListener('click', outsideClose);
     area.removeEventListener('click', onAreaClick);
     area.removeEventListener('mousemove', showControls);
-    area.removeEventListener('mouseleave', hideControls);
+    area.removeEventListener('mouseleave', () => {});
   };
 
   ctx.registerPlayer?.({
@@ -1098,18 +1102,28 @@ function setupActions(root, ep, ctx) {
   });
   
   root.querySelector('#btn-report')?.addEventListener('click', () => {
-    modal.show('Reportar problema', `<p>¿Qué problema has encontrado?</p><textarea id="report-desc" rows="3" placeholder="Describe el problema..."></textarea><br><button id="send-report">Enviar reporte</button>`);
+    // Modal específico para reportar con dos botones: Reportar (enlace externo) y Cerrar
+    const reportHtml = `
+      <p>¿Has encontrado un problema con este contenido?</p>
+      <div style="display: flex; justify-content: space-around; margin-top: 20px;">
+        <button id="report-action" style="background:#e50914;">Reportar</button>
+        <button id="report-close">Cerrar</button>
+      </div>
+    `;
+    modal.show('Reportar problema', reportHtml);
     setTimeout(() => {
-      document.getElementById('send-report')?.addEventListener('click', () => {
-        const desc = document.getElementById('report-desc')?.value;
-        if (desc) {
-          console.log('Reporte enviado:', desc);
+      const reportBtn = document.getElementById('report-action');
+      const closeBtn = document.getElementById('report-close');
+      if (reportBtn) {
+        reportBtn.addEventListener('click', () => {
+          // Redirigir a enlace externo (cámbialo por el que necesites)
+          window.open('https://forms.gle/ejemplo', '_blank');
           modal.hide();
-          showToast('Gracias por tu reporte', 'success');
-        } else {
-          showToast('Por favor describe el problema', 'error');
-        }
-      });
+        });
+      }
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => modal.hide());
+      }
     }, 100);
   });
   
