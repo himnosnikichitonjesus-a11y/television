@@ -62,7 +62,6 @@ function epCardHTML(ep) {
 function serieCardHTML(s) {
   const count = getEpisodiosBySerieId(s.seriesid).length;
   
-  // Cambia esta URL por la imagen real de "Serie"
   const serieIcon = `<img src="https://video-nikichitonjesus.odoo.com/web/image/445-ad116cfc/episodios.webp" alt="Serie" class="badge-icon">`;
 
   return `
