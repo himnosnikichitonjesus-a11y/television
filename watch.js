@@ -12,28 +12,304 @@ import {
 } from './memoria.js';
 import { escapeHtml, escapeAttr } from './feed.js';
 
-// SVG icons (estilo YouTube/Netflix)
+// Iconos SVG estándar (solo los que no tienen reemplazo por imagen)
 const ICONS = {
   play:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
   pause:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>',
   prev:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>',
   next:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>',
-  back10: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 3a9 9 0 1 0 8.94 8H19.4a7 7 0 1 1-2.05-4.96L14 9.5h7v-7l-2.62 2.62A8.96 8.96 0 0 0 12.5 3zm-1.1 11.83V9.4h-.94l-1.7.59v.78l1.45-.43v4.49h1.19zm3.36-2.67c0 .53-.06.94-.18 1.22-.12.28-.32.43-.6.43s-.48-.15-.6-.43-.18-.69-.18-1.22.06-.94.18-1.22c.12-.28.32-.43.6-.43s.48.15.6.43c.12.28.18.69.18 1.22zm1.22-.85c-.12-.28-.32-.5-.58-.66s-.57-.24-.92-.24-.66.08-.92.24-.46.38-.58.66-.21.65-.21 1.1v.69c0 .45.07.81.21 1.1.12.28.32.5.58.66s.57.24.92.24.66-.08.92-.24.46-.38.58-.66c.12-.28.21-.65.21-1.1v-.69c0-.45-.07-.82-.21-1.1z"/></svg>',
-  fwd10:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 3a9 9 0 1 1-8.94 8H4.6a7 7 0 1 0 2.05-4.96L10 9.5H3v-7l2.62 2.62A8.96 8.96 0 0 1 11.5 3zm1.05 11.83V9.4h-.93l-1.7.59v.78l1.45-.43v4.49h1.18zm3.37-2.67c0 .53-.06.94-.18 1.22-.12.28-.32.43-.6.43s-.48-.15-.6-.43-.18-.69-.18-1.22.06-.94.18-1.22c.12-.28.32-.43.6-.43s.48.15.6.43c.12.28.18.69.18 1.22zm1.22-.85c-.12-.28-.32-.5-.58-.66s-.57-.24-.92-.24-.66.08-.92.24-.46.38-.58.66-.21.65-.21 1.1v.69c0 .45.07.81.21 1.1.12.28.32.5.58.66s.57.24.92.24.66-.08.92-.24.46-.38.58-.66c.12-.28.21-.65.21-1.1v-.69c0-.45-.07-.82-.21-1.1z"/></svg>',
   vol:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.04v7.92A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06A7 7 0 0 1 14 18.7v2.06A9 9 0 0 0 14 3.23z"/></svg>',
   mute:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12a9 9 0 0 0-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.17v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>',
   full:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
   pip:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-8v6h8V7zm2-4H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16.01H3V4.98h18v14.03z"/></svg>',
   settings:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.57-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.14.24.43.34.68.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.49.42h4c.24 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.57 1.69-.98l2.49 1c.25.1.55 0 .68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>',
-  modeVideo: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 14H4V6h16v12zM10 8v8l5-4-5-4z"/></svg>',
-  modeAudio: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.04v7.92A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06A7 7 0 0 1 14 18.7v2.06A9 9 0 0 0 14 3.23z"/></svg>',
-  queue:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10h11v2H3zM3 6h11v2H3zM3 14h7v2H3zM16 13v8l7-4z"/>'
+  queue:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10h11v2H3zM3 6h11v2H3zM3 14h7v2H3zM16 13v8l7-4z"/></svg>'
+};
+
+// Iconos reemplazados por imágenes (back10, fwd10, modeVideo, modeAudio)
+const IMG_ICONS = {
+  back10: '<img src="https://video-nikichitonjesus.odoo.com/web/image/438-deea748f/-10.webp" alt="-10" style="width:100%; height:100%; object-fit:contain;">',
+  fwd10:  '<img src="https://video-nikichitonjesus.odoo.com/web/image/439-9448d521/%2B10.webp" alt="+10" style="width:100%; height:100%; object-fit:contain;">',
+  modeVideo: '<img src="https://nikichitonjesus.odoo.com/web/image/1110-40385f0d/video.webp" alt="video" style="width:100%; height:100%; object-fit:contain;">',
+  modeAudio: '<img src="https://nikichitonjesus.odoo.com/web/image/625-e42b8a86/audio.png" alt="audio" style="width:100%; height:100%; object-fit:contain;">'
 };
 
 let active = null;
 
 function isEmbedMode() {
   return document.body.classList.contains('embed-mode');
+}
+
+// Inyectar estilos esenciales (barra de progreso, overlay, colores dinámicos)
+function injectEssentialStyles() {
+  if (document.getElementById('watch-essential-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'watch-essential-styles';
+  style.textContent = `
+    /* Barra de progreso */
+    .player-area {
+      position: relative;
+      overflow: hidden;
+      background: var(--stage-bg, #0a0a0a);
+    }
+    .media-host {
+      width: 100%;
+      height: 100%;
+      background: var(--stage-bg, #0a0a0a);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .player-audio-cover {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+    }
+    .player-audio-cover img {
+      max-width: 70%;
+      max-height: 70%;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    }
+    .seekbar {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      background: rgba(255,255,255,0.2);
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .seek-buffer, .seek-fill {
+      position: absolute;
+      height: 100%;
+      top: 0;
+      left: 0;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .seek-buffer { background: rgba(255,255,255,0.3); width: 0; }
+    .seek-fill { background: #ff0000; width: 0; z-index: 1; }
+    .seek-thumb {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      background: #ff0000;
+      border-radius: 50%;
+      z-index: 2;
+      pointer-events: none;
+      left: 0;
+    }
+    #seek {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 3;
+    }
+    /* Controles flotantes del reproductor */
+    .player-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      padding: 20px 16px 12px;
+      transition: opacity 0.3s, transform 0.2s;
+      z-index: 10;
+    }
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .ctrl {
+      background: none;
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      transition: transform 0.1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ctrl svg, .ctrl img { width: 100%; height: 100%; }
+    .volume-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #vol { width: 70px; }
+    .time-display {
+      color: white;
+      font-size: 13px;
+      font-family: monospace;
+    }
+    .spacer { flex: 1; }
+    .menu-wrap { position: relative; }
+    .menu-pop {
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 8px;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 20;
+      min-width: 120px;
+    }
+    .menu-pop.open { display: flex; }
+    .menu-pop button {
+      background: none;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .menu-pop button:hover { background: #333; }
+    /* Panel lateral superpuesto (overlay) */
+    .player-side {
+      position: absolute;
+      top: 0;
+      right: -100%;
+      width: 100%;
+      max-width: 380px;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(12px);
+      z-index: 50;
+      transition: right 0.3s ease;
+      overflow-y: auto;
+    }
+    .player-side.open {
+      right: 0;
+    }
+    .side-inner {
+      padding: 20px;
+      color: white;
+    }
+    .side-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      float: right;
+      cursor: pointer;
+    }
+    .side-ep-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .side-ep-item {
+      display: flex;
+      gap: 12px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.1);
+    }
+    .side-ep-item.active { background: #e50914; }
+    .side-ep-item .t {
+      width: 60px;
+      height: 60px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 4px;
+    }
+    /* Centro de controles en embed */
+    .center-controls {
+      position: absolute;
+      bottom: 50%;
+      left: 50%;
+      transform: translate(-50%, 50%);
+      display: flex;
+      gap: clamp(12px, 5vw, 32px);
+      background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.2));
+      backdrop-filter: blur(8px);
+      padding: clamp(8px, 2vw, 16px) clamp(16px, 4vw, 32px);
+      border-radius: 60px;
+      z-index: 20;
+      transition: opacity 0.3s;
+    }
+    .ctrl-center {
+      background: none;
+      border: none;
+      color: white;
+      width: clamp(36px, 8vw, 64px);
+      height: clamp(36px, 8vw, 64px);
+      cursor: pointer;
+      filter: drop-shadow(0 2px 4px black);
+      transition: transform 0.1s;
+    }
+    .ctrl-center.main { width: clamp(48px, 10vw, 80px); height: clamp(48px, 10vw, 80px); }
+    .ctrl-center svg, .ctrl-center img { width: 100%; height: 100%; }
+    /* Ajustes modo embed */
+    body.embed-mode .player-stage {
+      background: var(--stage-bg);
+    }
+    body.embed-mode .embed-header {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(90deg, rgba(0,0,0,0.6), transparent);
+      padding: 8px 16px;
+      border-radius: 40px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    body.embed-mode .embed-logo {
+      height: clamp(24px, 5vw, 40px);
+      width: auto;
+    }
+    body.embed-mode .embed-title {
+      color: white;
+      font-size: clamp(12px, 3vw, 18px);
+      font-weight: 500;
+      text-shadow: 0 1px 2px black;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60vw;
+    }
+    body.embed-mode .player-controls.visible,
+    body.embed-mode .center-controls.visible,
+    body.embed-mode .embed-header.visible {
+      opacity: 1;
+    }
+    body.embed-mode .player-controls:not(.visible),
+    body.embed-mode .center-controls:not(.visible),
+    body.embed-mode .embed-header:not(.visible) {
+      opacity: 0;
+      pointer-events: none;
+    }
+    /* Scroll automático al inicio */
+    .watch {
+      scroll-margin-top: 0;
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 export const meta = (ctx) => {
@@ -70,11 +346,15 @@ function buildContext(ep) {
 }
 
 export function render(container, ctx) {
+  injectEssentialStyles();
+  // Forzar scroll al inicio
+  window.scrollTo(0, 0);
+  if (container.scrollTo) container.scrollTo(0, 0);
+
   const { episodio, queue, queueIndex, serie } = ctx;
   const sugeridos = recomendar(episodio, 8);
   const embed = isEmbedMode();
 
-  // ¿Tenemos un media reciclado desde PIP del mismo episodio?
   const reclaim = ctx.reclaimPipMedia?.(episodio);
   const initialMode = reclaim
     ? (reclaim.tagName === 'VIDEO' ? 'video' : 'audio')
@@ -94,9 +374,9 @@ export function render(container, ctx) {
           <div class="player-gradient"></div>
           <div class="center-controls ${embed ? 'embed-center' : ''}" id="center-controls">
             ${embed ? `
-              <button class="ctrl-center" data-act="back10" title="Retroceder 10s">${ICONS.back10}</button>
+              <button class="ctrl-center" data-act="back10" title="Retroceder 10s">${IMG_ICONS.back10}</button>
               <button class="ctrl-center main" data-act="toggle" title="Play/Pause (Espacio)">${ICONS.play}</button>
-              <button class="ctrl-center" data-act="fwd10" title="Avanzar 10s">${ICONS.fwd10}</button>
+              <button class="ctrl-center" data-act="fwd10" title="Avanzar 10s">${IMG_ICONS.fwd10}</button>
             ` : `
               <button class="ctrl-center" data-act="toggle" id="center-play">${ICONS.play}</button>
             `}
@@ -138,7 +418,6 @@ export function render(container, ctx) {
     </div>
   `;
 
-  // Montar el media: reciclado o nuevo
   const host = container.querySelector('#media-host');
   const audioCoverHTML = `<div class="player-audio-cover"><img src="${escapeAttr(episodio.coverUrl)}" alt="${escapeAttr(episodio.title)}"/><div class="audio-pulse"></div></div>`;
 
@@ -178,7 +457,8 @@ function createMediaElement(mode, ep) {
 
 function controlsHTML(ep, hasQueue, embed) {
   const canSwitch = ep.hasVideo && ep.hasAudio;
-  // En embed ocultamos algunos controles como la lista de episodios, descargas, etc.
+  // Seleccionar icono de modo según el modo actual (se actualizará dinámicamente en JS)
+  const modeIcon = IMG_ICONS.modeVideo; // placeholder
   return `
     <div class="player-controls ${embed ? 'embed-controls' : ''}" id="player-controls">
       <div class="progress-row">
@@ -192,8 +472,8 @@ function controlsHTML(ep, hasQueue, embed) {
       <div class="controls-row">
         <button class="ctrl" data-act="toggle" id="btn-toggle" title="Play/Pause (Espacio)">${ICONS.play}</button>
         <button class="ctrl" data-act="prev" title="Anterior" ${hasQueue ? '' : 'disabled'}>${ICONS.prev}</button>
-        <button class="ctrl" data-act="back10" title="-10s (←)">${ICONS.back10}</button>
-        <button class="ctrl" data-act="fwd10" title="+10s (→)">${ICONS.fwd10}</button>
+        <button class="ctrl" data-act="back10" title="-10s (←)">${IMG_ICONS.back10}</button>
+        <button class="ctrl" data-act="fwd10" title="+10s (→)">${IMG_ICONS.fwd10}</button>
         <button class="ctrl" data-act="next" title="Siguiente" ${hasQueue ? '' : 'disabled'}>${ICONS.next}</button>
         <div class="volume-wrap">
           <button class="ctrl" data-act="mute" id="btn-mute" title="Silenciar (M)">${ICONS.vol}</button>
@@ -201,7 +481,7 @@ function controlsHTML(ep, hasQueue, embed) {
         </div>
         <div class="time-display"><span id="t-current">0:00</span> / <span id="t-total">0:00</span></div>
         <div class="spacer"></div>
-        ${canSwitch ? `<button class="ctrl" data-act="switch-mode" id="btn-mode" title="Cambiar audio/video">${ICONS.modeVideo}</button>` : ''}
+        ${canSwitch ? `<button class="ctrl" data-act="switch-mode" id="btn-mode" title="Cambiar audio/video">${modeIcon}</button>` : ''}
         ${!embed && hasQueue ? `<button class="ctrl" data-act="toggle-queue" title="Lista de episodios">${ICONS.queue}</button>` : ''}
         <div class="menu-wrap">
           <button class="ctrl" data-act="menu" title="Opciones">${ICONS.settings}</button>
@@ -273,28 +553,35 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
   const menuPop = root.querySelector('#menu-pop');
   const centerControls = root.querySelector('#center-controls');
   const embedHeader = root.querySelector('#embed-header');
+  const modeBtn = root.querySelector('#btn-mode');
   
   let currentMode = initialMode;
-  let controlsVisible = true;
   let controlsTimeout;
   let seekingUser = false;
 
-  // Ajuste específico para modo embed: ocultar controles inferiores y centro al inicio?
+  // Actualizar icono del botón de modo
+  const updateModeIcon = () => {
+    if (modeBtn) {
+      modeBtn.innerHTML = currentMode === 'video' ? IMG_ICONS.modeVideo : IMG_ICONS.modeAudio;
+    }
+  };
+  updateModeIcon();
+
   if (embed) {
-    // Por defecto en embed, los controles están visibles y se ocultan tras inactividad
     const ctrlGroup = root.querySelector('.player-controls');
     if (ctrlGroup) ctrlGroup.classList.add('visible');
     if (centerControls) centerControls.classList.add('visible');
+    if (embedHeader) embedHeader.classList.add('visible');
   }
 
-  // Subtítulos para video
+  // Subtítulos
   if (currentMode === 'video' && ep.subtitlesUrl && !media.querySelector('track')) {
     const tr = document.createElement('track');
     tr.kind = 'subtitles'; tr.src = ep.subtitlesUrl; tr.srclang = 'es'; tr.label = 'Español'; tr.default = true;
     media.appendChild(tr);
   }
 
-  // Restaurar progreso (excepto si viene reciclado desde PIP)
+  // Restaurar progreso
   const prog = getProgress(ep.id);
   if (prog && prog.duration && prog.progress < prog.duration - 5 && media.currentTime < 1) {
     const restore = () => { try { media.currentTime = prog.progress; } catch {} };
@@ -302,7 +589,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     else media.addEventListener('loadedmetadata', restore, { once: true });
   }
 
-  // Sincronizar icono de play/pause
   const syncToggle = () => {
     const isPaused = media.paused;
     const playPauseIcon = isPaused ? ICONS.play : ICONS.pause;
@@ -318,7 +604,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
   };
   syncToggle();
 
-  // Auto-play
   const attemptPlay = () => {
     media.play().catch(() => {
       media.muted = true;
@@ -331,14 +616,11 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     else media.addEventListener('canplay', attemptPlay, { once: true });
   }
 
-  // Manejo de errores
   media.addEventListener('error', () => {
     console.warn('Media error', media.error);
-    const centerDiv = root.querySelector('#center-controls');
-    if (centerDiv) centerDiv.innerHTML = `<div style="font-size:14px;text-align:center;padding:20px;">⚠️ No se pudo cargar el medio</div>`;
+    if (centerControls) centerControls.innerHTML = `<div style="font-size:14px;text-align:center;padding:20px;">⚠️ No se pudo cargar el medio</div>`;
   });
 
-  // Eventos de tiempo y buffer
   media.addEventListener('play', () => { syncToggle(); updateMediaSession(ep, media); area.classList.add('playing'); });
   media.addEventListener('pause', syncToggle);
   media.addEventListener('timeupdate', () => {
@@ -366,7 +648,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     vol.value = media.muted ? 0 : media.volume;
   });
 
-  // Seek interactivo
   seek.addEventListener('input', () => {
     seekingUser = true;
     const pct = seek.value / 10;
@@ -379,14 +660,12 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     seekingUser = false;
   });
 
-  // Volumen
   vol.value = media.muted ? 0 : media.volume;
   vol.addEventListener('input', () => {
     media.volume = parseFloat(vol.value);
     media.muted = media.volume === 0;
   });
 
-  // Función para mostrar/ocultar controles en embed
   const showControls = () => {
     if (!embed) return;
     const ctrlGroup = root.querySelector('.player-controls');
@@ -411,25 +690,20 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     clearTimeout(controlsTimeout);
   };
 
-  // Manejo del clic en el área del reproductor (diferente para embed y normal)
   const togglePlayPause = () => { media.paused ? media.play() : media.pause(); };
   const onAreaClick = (e) => {
-    // Evitar que clic en botones o controles dispare el toggle de controles/play
     if (e.target.closest('.ctrl') || e.target.closest('.ctrl-center') || e.target.closest('.menu-wrap') || e.target.closest('.volume-wrap')) return;
     if (embed) {
-      // En embed: alternar visibilidad de controles
       const ctrlGroup = root.querySelector('.player-controls');
       const isVisible = ctrlGroup?.classList.contains('visible');
       if (isVisible) hideControls();
       else showControls();
     } else {
-      // Modo normal: pausar/reproducir
       togglePlayPause();
     }
   };
   area.addEventListener('click', onAreaClick);
 
-  // Hover para mostrar controles en embed
   if (embed) {
     area.addEventListener('mousemove', showControls);
     area.addEventListener('mouseleave', () => {
@@ -440,10 +714,8 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
         if (embedHeader) embedHeader.classList.remove('visible');
       }
     });
-    // Mostrar al inicio
     showControls();
   } else {
-    // En modo normal, auto-ocultar controles inferiores cuando no hay mouse
     let hideTimer;
     const showNormalControls = () => {
       area.classList.add('show-controls');
@@ -454,7 +726,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     area.addEventListener('mouseleave', () => area.classList.remove('show-controls'));
   }
 
-  // Acciones de botones (controles)
   root.querySelectorAll('[data-act]').forEach(b => {
     b.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -468,8 +739,7 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
       else if (act === 'switch-mode') {
         const newMode = currentMode === 'video' ? 'audio' : 'video';
         currentMode = newMode;
-        const modeBtn = root.querySelector('#btn-mode');
-        if (modeBtn) modeBtn.innerHTML = newMode === 'video' ? ICONS.modeVideo : ICONS.modeAudio;
+        updateModeIcon();
         switchMode(area, ep, newMode, media, ctx);
       }
       else if (act === 'toggle-queue') toggleSidePanel(side, sideInner, 'queue', ep, queue, ctx);
@@ -489,7 +759,6 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     });
   });
 
-  // Velocidad y calidad
   root.querySelectorAll('[data-rate]').forEach(b => {
     b.addEventListener('click', () => {
       media.playbackRate = parseFloat(b.dataset.rate);
@@ -509,13 +778,11 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
     });
   });
 
-  // Cerrar menú al click fuera
   const outsideClose = (e) => {
     if (!e.target.closest('.menu-wrap')) menuPop?.classList.remove('open');
   };
   document.addEventListener('click', outsideClose);
 
-  // Teclado global (solo en modo normal? En embed también funcionará espacio para play/pause)
   const onKey = (e) => {
     if (e.target.matches('input, textarea')) return;
     if (e.code === 'Space') { e.preventDefault(); togglePlayPause(); }
@@ -528,14 +795,12 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed
   };
   document.addEventListener('keydown', onKey);
 
-  // Limpieza al destruir
   active._cleanup = () => {
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('click', outsideClose);
     area.removeEventListener('click', onAreaClick);
   };
 
-  // Exponer control al contexto global (para PIP)
   ctx.registerPlayer?.({
     media, episodio: ep, queue, queueIndex, mode: currentMode,
     play: () => media.play(), pause: () => media.pause(),
@@ -574,7 +839,6 @@ function switchMode(area, ep, newMode, oldMedia, ctx) {
     if (wasPlaying) media.play();
   }, { once: true });
 
-  // Recargar la vista para mantener la consistencia (reutilizamos navegación)
   ctx.navigate(ep.detailUrl);
 }
 
