@@ -9,6 +9,11 @@
       "source": "/2024/12/profecia-de-la-estrella-de-belen.html",
       "destination": "/la-historia-del-nacimiento/la-profesia-de-isaias-nacimiento",
       "permanent": true
+    },
+    {
+      "source": "/search/label/Navidad",
+      "destination": "/categoria/Navidad",
+      "permanent": true
     }
   ],
   "rewrites": [
