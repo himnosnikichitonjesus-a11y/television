@@ -10,13 +10,44 @@
   <meta property="og:description" content="Reproductor de audio y video — episodios, series y más." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='80' font-size='80'%3E🎬%3C/text%3E%3C/svg%3E" />
+  <!-- Favicon actualizado con la imagen proporcionada -->
+  <link rel="icon" type="image/svg+xml" href="https://nikichitonjesus.odoo.com/web/image/1666-b4b0cc47/Logo%201%201.svg" />
+  <!-- Estilos generales (se mantiene el enlace a tu styles.css original) -->
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* Ajuste adicional para el logo en el título, sin interferir con tu CSS existente */
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+    .brand-logo {
+      height: 32px;
+      width: auto;
+      vertical-align: middle;
+      display: inline-block;
+    }
+    /* Asegurar que el texto del título se mantenga al lado */
+    .brand span {
+      display: inline-block;
+    }
+    /* Opcional: si el logo es muy grande en pantallas pequeñas */
+    @media (max-width: 640px) {
+      .brand-logo {
+        height: 24px;
+      }
+    }
+  </style>
 </head>
 <body>
   <header id="app-header">
     <div class="header-inner">
-      <a href="/" data-link class="brand">Kristo<span>Videos</span></a>
+      <a href="/" data-link class="brand">
+        <!-- Logo imagen agregado antes del título -->
+        <img class="brand-logo" src="https://nikichitonjesus.odoo.com/web/image/1668-134717bf/Comp%20Logo%20con%20fondo.svg" alt="Logo NikichitonJesús" />
+        Kristo<span>Videos</span>
+      </a>
       <nav class="main-nav">
         <a href="/" data-link>Inicio</a>
         <a href="/novedades" data-link>Novedades</a>
