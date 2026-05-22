@@ -79,28 +79,26 @@ const episodiosBase = [
     date: '2026-02-03',
     mediaVideo: 'https://archive.org/download/nikichitonjesus/Navidad002.mp4',
     coverUrl: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
-    title: 'La historia del Nacimiento | Balaam',
+    title: 'La profecía de Balaam',
     author: 'NCHJ',
     categoria: 'Navidad, Jesús, Nacimiento',
     description: 'La historia del nacimiento de Jesucristo es una de las más impresionantes de la historia de la humanidad.',
     allowDownload: false,
     seriesid: '02-la-historia-del-nacimiento',
-    bgColor: '#46210a',
-    detailUrl: 'LHNJ/balaam'
+    bgColor: '#46210a'
   },
   {
     id: '02-03-isaias',
     date: '2026-02-03',
     mediaVideo: 'https://archive.org/download/nikichitonjesus/Navidad003.mp4',
     coverUrl: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
-    title: 'La historia del Nacimiento | Isaías',
+    title: 'La profesía de Isaías | Nacimiento',
     author: 'NCHJ',
     categoria: 'Navidad, Jesús, Nacimiento',
     description: 'La historia del nacimiento de Jesucristo es una de las más impresionantes de la historia de la humanidad.',
     allowDownload: false,
     seriesid: '02-la-historia-del-nacimiento',
-    bgColor: '#46210a',
-    detailUrl: 'LHNJ/Isaias'
+    bgColor: '#46210a'
   },
   {
     id: '03-01-que-es-y-que-no-es',
