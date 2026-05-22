@@ -23,9 +23,25 @@ export const series = [
     seriesid: '02-la-historia-del-nacimiento',
     portada_serie: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
     titulo_serie: 'La historia del nacimiento de jesucristo',
-    descripcion_serie: 'Los derechos de tercera generación: pueblos indígenas y derechos de solidaridad.',
+    descripcion_serie: 'Esta es la historia más grande, que Jesucristo dejó su trono y corona por los pecadores para morir por sus pecados y salvarlos.',
     url_serie: '/la-historia-del-nacimiento',
     bgColor: '#cc04ab'
+  },
+  {
+    seriesid: '03-el-evangelio-verdadero',
+    portada_serie: 'https://s3-us-west-2.amazonaws.com/anchor-generated-image-bank/staging/podcast_uploaded_episode400/42439556/42439556-1731523469735-489eb812305f7.jpg',
+    titulo_serie: 'El evangelio verdadero',
+    descripcion_serie: 'El Evangelio según Jesucristo, no es anunciar el enriquecimiento terrenal.',
+    url_serie: '/el-evangelio-verdadero',
+    bgColor: '#0097e3'
+  },
+  {
+    seriesid: '04-semana-santa',
+    portada_serie: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh4MnyPXIKyWvPa0PEl0KyKjLw7HGWiyIKgnDUIBQkiMdKPFCM1SnIddpiXLKsNj0TbkPm-3ek7wUkLaDiOpjDQwc4TChpC7qyV8rJN-zR4fUbXw7E9xL2d-FQXhbzol0jb2ejD351cL8ZtDmtl3YJdnFp-3V9jQSg0p5sy_j6AF3N2vYGJOIHA9p0mQ5c/s1920/Captura%20de%20pantalla%202024-04-30%20213134.png',
+    titulo_serie: 'Semana Santa',
+    descripcion_serie: 'Es una de las celebraciones más importantes del mundo cristiano. En esta serie exploramos qué hay detrás.',
+    url_serie: '/semana-santa',
+    bgColor: '#0097e3'
   }
 ];
 
@@ -43,7 +59,7 @@ const episodiosBase = [
     description: 'Himno de la evangelización compuesto por Priscilla Jane Owens para la gloria de Dios.',
     allowDownload: false,
     seriesid: '01-himnario',
-    bgColor: '#46210a'
+    bgColor: '#0097e3'
   },
   {
     id: '02-01-introducción',
@@ -52,37 +68,65 @@ const episodiosBase = [
     coverUrl: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
     title: 'La historia del Nacimiento | Introducción',
     author: 'NCHJ',
-    categoria: 'Navidad, Jesús, nacimiento',
+    categoria: 'Navidad, Jesús, Nacimiento',
     description: 'La historia del nacimiento de Jesucristo es una de las más impresionantes de la historia de la humanidad.',
     allowDownload: false,
     seriesid: '02-la-historia-del-nacimiento',
     bgColor: '#46210a'
   },
   {
-    id: 'conceptos-basicos-ddhh',
-    date: '2026-02-04',
-    mediaVideo: 'https://lb.s3.odysee.tv/vods2.odysee.live/odysee-replays/dd57d90536480f9a751ba4429447fd5f613efce3/1770236623.mp4',
-    mediaUrl: 'https://d3ctxlq1ktw2nl.cloudfront.net/staging/2026-4-5/423554281-44100-2-4252a47b87ec8.m4a',
-    coverUrl: 'https://balta-media.odoo.com/web/image/927-edc793ab/Pueblos%20ind%C3%ADgenas.png',
-    title: 'Conceptos básicos de los Derechos Humanos',
-    author: 'Raymundo',
-    categoria: 'DDHH, Cultura, Paz',
-    description: 'Conceptos básicos de los Derechos Humanos.',
+    id: '02-02-balaam',
+    date: '2026-02-03',
+    mediaVideo: 'https://archive.org/download/nikichitonjesus/Navidad002.mp4',
+    coverUrl: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
+    title: 'La historia del Nacimiento | Balaam',
+    author: 'NCHJ',
+    categoria: 'Navidad, Jesús, Nacimiento',
+    description: 'La historia del nacimiento de Jesucristo es una de las más impresionantes de la historia de la humanidad.',
     allowDownload: false,
-    seriesid: 'dp-indigenas',
-    bgColor: '#d92c5e'
+    seriesid: '02-la-historia-del-nacimiento',
+    bgColor: '#46210a',
+    detailUrl: 'LHNJ/balaam'
   },
   {
-    id: 'logica-debate-3',
-    date: '2026-05-05',
-    mediaUrl: 'https://d3ctxlq1ktw2nl.cloudfront.net/staging/2026-4-5/423554281-44100-2-4252a47b87ec8.m4a',
-    coverUrl: 'https://balta-media.odoo.com/web/image/1144-3ab4031d/44500417-1759018829686-8b0dde55850ed%5B1%5D.webp',
-    title: 'Debate: Caso Estafa propia',
-    author: 'BM',
-    categoria: 'Lógica, Tecnología, Espiritualidad',
-    description: 'El caso de estafa propia más insólito de la historia del país.',
+    id: '02-03-isaias',
+    date: '2026-02-03',
+    mediaVideo: 'https://archive.org/download/nikichitonjesus/Navidad003.mp4',
+    coverUrl: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
+    title: 'La historia del Nacimiento | Isaías',
+    author: 'NCHJ',
+    categoria: 'Navidad, Jesús, Nacimiento',
+    description: 'La historia del nacimiento de Jesucristo es una de las más impresionantes de la historia de la humanidad.',
     allowDownload: false,
-    seriesid: null,
+    seriesid: '02-la-historia-del-nacimiento',
+    bgColor: '#46210a',
+    detailUrl: 'LHNJ/Isaias'
+  },
+  {
+    id: '03-01-que-es-y-que-no-es',
+    date: '2026-02-04',
+    mediaVideo: 'https://archive.org/download/nikichitonjesus/001',
+    mediaUrl: 'https://d3ctxlq1ktw2nl.cloudfront.net/staging/2024-10-13/389750023-44100-2-64450c94550ab.m4a',
+    coverUrl: 'https://s3-us-west-2.amazonaws.com/anchor-generated-image-bank/staging/podcast_uploaded_episode400/42439556/42439556-1731523469735-489eb812305f7.jpg',
+    title: '¿Qué es y qué no es el Evangelio?',
+    author: 'RC. Sproul',
+    categoria: 'Gracia, Evangelio, Jesucristo',
+    description: 'Llevamos años estudiando la palabra de Dios. Y en Chajul el Evangelio fue traido hace muchos años. Bueno, podemos decir que el cristianismo comenzó hace siglos con la llegada de los españoles. Y desde el punto de vista de los católicos, el evangelio fue el inicio de la rebelión contra Dios. Y por supuesto, han ido más alla, con la implementación del -evangelio de la prosperidad-',
+    allowDownload: false,
+    seriesid: '03-el-evangelio-verdadero',
+    bgColor: '#0097e3'
+  },
+  {
+    id: '04-01-semana-santa',
+    date: '2026-05-05',
+    mediaUrl: 'https://d3ctxlq1ktw2nl.cloudfront.net/staging/2024-10-14/389778524-44100-2-0e54c2945212.m4a',
+    coverUrl: 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEh4MnyPXIKyWvPa0PEl0KyKjLw7HGWiyIKgnDUIBQkiMdKPFCM1SnIddpiXLKsNj0TbkPm-3ek7wUkLaDiOpjDQwc4TChpC7qyV8rJN-zR4fUbXw7E9xL2d-FQXhbzol0jb2ejD351cL8ZtDmtl3YJdnFp-3V9jQSg0p5sy_j6AF3N2vYGJOIHA9p0mQ5c/s1920/Captura%20de%20pantalla%202024-04-30%20213134.png',
+    title: '¿Qué hay detrás de la Semana Santa?',
+    author: 'Niki Chiton Jesus',
+    categoria: 'Historia, Vida, Semana mayor',
+    description: 'Conmemorando la vida y resurrección de Jesucristo',
+    allowDownload: false,
+    seriesid: '04-semana-santa',
     bgColor: '#2596be'
   }
 ];
