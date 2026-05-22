@@ -12,19 +12,19 @@ function slugify(text) {
 
 export const series = [
   {
-    seriesid: 'ddpp-3-clases',
-    portada_serie: 'https://balta-media.odoo.com/web/image/925-6ed84678/DERECHO%20PENAL%20III.png',
-    titulo_serie: 'Derecho penal 3',
-    descripcion_serie: 'Derecho Público — clases magistrales sobre la teoría del delito.',
-    url_serie: '/ddpp-3/clases',
+    seriesid: '01-himnario',
+    portada_serie: 'https://nikichitonjesus.odoo.com/web/image/1663-46157754/Niki%2520Chiton%2520Jesus%2520%281%29.webp',
+    titulo_serie: 'Himnario Niki Chiton Jesus',
+    descripcion_serie: 'Himnología — Cristiana',
+    url_serie: '/himnario/nikichitonjesus',
     bgColor: '#46210a'
   },
   {
-    seriesid: 'dp-indigenas',
-    portada_serie: 'https://balta-media.odoo.com/web/image/1031-a693e9ca/Pueblos%20ind%C3%ADgenas.webp',
-    titulo_serie: 'Derecho de los pueblos indígenas',
+    seriesid: '02-la-historia-del-nacimiento',
+    portada_serie: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
+    titulo_serie: 'La historia del nacimiento de jesucristo',
     descripcion_serie: 'Los derechos de tercera generación: pueblos indígenas y derechos de solidaridad.',
-    url_serie: '/dp-indigenas',
+    url_serie: '/la-historia-del-nacimiento',
     bgColor: '#cc04ab'
   }
 ];
@@ -33,29 +33,29 @@ const seriesMap = Object.fromEntries(series.map(s => [s.seriesid, s]));
 
 const episodiosBase = [
   {
-    id: 'corrientes-teoria-delito',
+    id: '01-01-jesus-saves',
     date: '2026-02-10',
-    mediaUrl: 'https://d3ctxlq1ktw2nl.cloudfront.net/staging/2026-1-13/418061888-44100-2-bd0c488cd9ace.m4a',
-    coverUrl: 'https://balta-media.odoo.com/web/image/925-6ed84678/DERECHO%20PENAL%20III.png',
-    title: 'Corrientes de la teoría del delito',
-    author: 'Lemus',
-    categoria: 'Penal, Cultura, Ciencia',
-    description: 'Continuación de las corrientes de la teoría del delito. Causalismo, finalismo y funcionalismo.',
+    mediaUrl: 'https://www.hymnal.net/Hymns/Hymnal/mp3/e0991_i.mp3',
+    coverUrl: 'https://nikichitonjesus.odoo.com/web/image/1668-134717bf/Comp%20Logo%20con%20fondo.svg',
+    title: 'Niki Chiton Jesus | Himno #1',
+    author: 'Grace Church',
+    categoria: 'Himno, gracia, salvación, cristo',
+    description: 'Himno de la evangelización compuesto por Priscilla Jane Owens para la gloria de Dios.',
     allowDownload: false,
-    seriesid: 'ddpp-3-clases',
+    seriesid: '01-himnario',
     bgColor: '#46210a'
   },
   {
-    id: 'teoria-causalista',
+    id: '02-01-introducción',
     date: '2026-02-03',
-    mediaVideo: 'https://archive.org/download/nikichitonjesus/OMP1NCHJ.mp4',
-    coverUrl: 'https://balta-media.odoo.com/web/image/925-6ed84678/DERECHO%20PENAL%20III.png',
-    title: 'La teoría causalista',
-    author: 'Lemus',
-    categoria: 'Penal, Cultura, Verdad',
-    description: 'Desarrollo de la teoría causalista en el derecho penal.',
+    mediaVideo: 'https://archive.org/download/nikichitonjesus/Navidad001.mp4',
+    coverUrl: 'https://i.pinimg.com/736x/80/c3/2d/80c32dea2e940ddc4de74810277638c0.jpg',
+    title: 'La historia del Nacimiento | Introducción',
+    author: 'NCHJ',
+    categoria: 'Navidad, Jesús, nacimiento',
+    description: 'La historia del nacimiento de Jesucristo es una de las más impresionantes de la historia de la humanidad.',
     allowDownload: false,
-    seriesid: 'ddpp-3-clases',
+    seriesid: '02-la-historia-del-nacimiento',
     bgColor: '#46210a'
   },
   {
