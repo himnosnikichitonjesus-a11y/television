@@ -1,5 +1,6 @@
 // =========================================================
 // watch.js — Vista del reproductor (modo cine profesional)
+// Soporta modo normal y modo embed con comportamientos diferenciados
 // =========================================================
 import {
   getEpisodioById, getEpisodioByDetailUrl, getSerieByUrl,
@@ -24,11 +25,16 @@ const ICONS = {
   full:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
   pip:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-8v6h8V7zm2-4H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16.01H3V4.98h18v14.03z"/></svg>',
   settings:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.57-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.14.24.43.34.68.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.49.42h4c.24 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.57 1.69-.98l2.49 1c.25.1.55 0 .68-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>',
-  mode:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 14H4V6h16v12zM10 8v8l5-4-5-4z"/></svg>',
-  queue:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10h11v2H3zM3 6h11v2H3zM3 14h7v2H3zM16 13v8l7-4z"/></svg>'
+  modeVideo: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 14H4V6h16v12zM10 8v8l5-4-5-4z"/></svg>',
+  modeAudio: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.04v7.92A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06A7 7 0 0 1 14 18.7v2.06A9 9 0 0 0 14 3.23z"/></svg>',
+  queue:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10h11v2H3zM3 6h11v2H3zM3 14h7v2H3zM16 13v8l7-4z"/>'
 };
 
 let active = null;
+
+function isEmbedMode() {
+  return document.body.classList.contains('embed-mode');
+}
 
 export const meta = (ctx) => {
   const ep = ctx?.episodio;
@@ -66,6 +72,7 @@ function buildContext(ep) {
 export function render(container, ctx) {
   const { episodio, queue, queueIndex, serie } = ctx;
   const sugeridos = recomendar(episodio, 8);
+  const embed = isEmbedMode();
 
   // ¿Tenemos un media reciclado desde PIP del mismo episodio?
   const reclaim = ctx.reclaimPipMedia?.(episodio);
@@ -77,41 +84,57 @@ export function render(container, ctx) {
     <div class="watch">
       <section class="player-stage" style="--stage-bg:${escapeAttr(episodio.bgColor || '#0a0a0a')}">
         <div class="player-area" id="player-area" data-mode="${initialMode}">
+          ${embed ? `
+            <div class="embed-header" id="embed-header">
+              <img class="embed-logo" src="https://nikichitonjesus.odoo.com/web/image/1668-134717bf/Comp%20Logo%20con%20fondo.svg" alt="Logo">
+              <span class="embed-title">${escapeHtml(episodio.title)}</span>
+            </div>
+          ` : ''}
           <div class="media-host" id="media-host"></div>
           <div class="player-gradient"></div>
-          <div class="center-play hidden" id="center-play">${ICONS.play}</div>
-          ${controlsHTML(episodio, queue.length > 1)}
+          <div class="center-controls ${embed ? 'embed-center' : ''}" id="center-controls">
+            ${embed ? `
+              <button class="ctrl-center" data-act="back10" title="Retroceder 10s">${ICONS.back10}</button>
+              <button class="ctrl-center main" data-act="toggle" title="Play/Pause (Espacio)">${ICONS.play}</button>
+              <button class="ctrl-center" data-act="fwd10" title="Avanzar 10s">${ICONS.fwd10}</button>
+            ` : `
+              <button class="ctrl-center" data-act="toggle" id="center-play">${ICONS.play}</button>
+            `}
+          </div>
+          ${controlsHTML(episodio, queue.length > 1, embed)}
         </div>
         <aside class="player-side" id="player-side">
           <div class="side-inner" id="side-inner"></div>
         </aside>
       </section>
 
-      <div class="watch-info">
-        <h1 class="watch-title">${escapeHtml(episodio.title)}</h1>
-        <div class="watch-meta-row">
-          <span class="watch-author">${escapeHtml(episodio.author || '')}</span>
-          <span>· ${formatDate(episodio.date)}</span>
-          ${episodio.categoria ? `<span>· ${escapeHtml(episodio.categoria)}</span>` : ''}
-          <div class="watch-actions">
-            <button id="btn-like" class="${isLiked(episodio.id) ? 'liked' : ''}">❤ <span>${isLiked(episodio.id) ? 'Te gusta' : 'Me gusta'}</span></button>
-            <button id="btn-share">↗ Compartir</button>
-            <button id="btn-embed">&lt;&gt; Incrustar</button>
-            ${episodio.allowDownload ? `<button id="btn-download">⬇ Descargar</button>` : ''}
+      ${!embed ? `
+        <div class="watch-info">
+          <h1 class="watch-title">${escapeHtml(episodio.title)}</h1>
+          <div class="watch-meta-row">
+            <span class="watch-author">${escapeHtml(episodio.author || '')}</span>
+            <span>· ${formatDate(episodio.date)}</span>
+            ${episodio.categoria ? `<span>· ${escapeHtml(episodio.categoria)}</span>` : ''}
+            <div class="watch-actions">
+              <button id="btn-like" class="${isLiked(episodio.id) ? 'liked' : ''}">❤ <span>${isLiked(episodio.id) ? 'Te gusta' : 'Me gusta'}</span></button>
+              <button id="btn-share">↗ Compartir</button>
+              <button id="btn-embed">&lt;&gt; Incrustar</button>
+              ${episodio.allowDownload ? `<button id="btn-download">⬇ Descargar</button>` : ''}
+            </div>
           </div>
+          ${episodio.description ? `<div class="watch-description">${escapeHtml(episodio.description)}</div>` : ''}
         </div>
-        ${episodio.description ? `<div class="watch-description">${escapeHtml(episodio.description)}</div>` : ''}
-      </div>
 
-      <div class="watch-below ${serie ? 'has-series' : ''}">
-        <section>
-          <h2 style="margin:0 0 14px;font-size:18px;">Te puede interesar</h2>
-          <div class="suggest-grid">
-            ${sugeridos.map(e => suggestCardHTML(e)).join('')}
-          </div>
-        </section>
-        ${serie ? seriesPanelHTML(serie, queue, episodio) : ''}
-      </div>
+        <div class="watch-below ${serie ? 'has-series' : ''}">
+          <section>
+            <h2 style="margin:0 0 14px;font-size:18px;">Te puede interesar</h2>
+            <div class="suggest-grid">
+              ${sugeridos.map(e => suggestCardHTML(e)).join('')}
+            </div>
+          </section>
+          ${serie ? seriesPanelHTML(serie, queue, episodio) : ''}
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -132,7 +155,7 @@ export function render(container, ctx) {
   }
 
   active = { episodio, container, ctx, queue, queueIndex };
-  setupPlayer(container, media, episodio, queue, queueIndex, ctx, initialMode);
+  setupPlayer(container, media, episodio, queue, queueIndex, ctx, initialMode, embed);
   setupActions(container, episodio, ctx);
 
   container.querySelectorAll('[data-ep-link]').forEach(el => {
@@ -153,10 +176,11 @@ function createMediaElement(mode, ep) {
   return el;
 }
 
-function controlsHTML(ep, hasQueue) {
+function controlsHTML(ep, hasQueue, embed) {
   const canSwitch = ep.hasVideo && ep.hasAudio;
+  // En embed ocultamos algunos controles como la lista de episodios, descargas, etc.
   return `
-    <div class="player-controls" id="player-controls">
+    <div class="player-controls ${embed ? 'embed-controls' : ''}" id="player-controls">
       <div class="progress-row">
         <div class="seekbar" id="seekbar">
           <div class="seek-buffer" id="seek-buffer"></div>
@@ -177,8 +201,8 @@ function controlsHTML(ep, hasQueue) {
         </div>
         <div class="time-display"><span id="t-current">0:00</span> / <span id="t-total">0:00</span></div>
         <div class="spacer"></div>
-        ${canSwitch ? `<button class="ctrl" data-act="switch-mode" id="btn-mode" title="Cambiar audio/video">${ICONS.mode}</button>` : ''}
-        ${hasQueue ? `<button class="ctrl" data-act="toggle-queue" title="Lista de episodios">${ICONS.queue}</button>` : ''}
+        ${canSwitch ? `<button class="ctrl" data-act="switch-mode" id="btn-mode" title="Cambiar audio/video">${ICONS.modeVideo}</button>` : ''}
+        ${!embed && hasQueue ? `<button class="ctrl" data-act="toggle-queue" title="Lista de episodios">${ICONS.queue}</button>` : ''}
         <div class="menu-wrap">
           <button class="ctrl" data-act="menu" title="Opciones">${ICONS.settings}</button>
           <div class="menu-pop" id="menu-pop">
@@ -233,7 +257,7 @@ function seriesPanelHTML(serie, queue, currentEp) {
 // =========================================================
 // Lógica del reproductor
 // =========================================================
-function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
+function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode, embed) {
   const area = root.querySelector('#player-area');
   const seek = root.querySelector('#seek');
   const seekFill = root.querySelector('#seek-fill');
@@ -247,19 +271,30 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
   const sideInner = root.querySelector('#side-inner');
   const side = root.querySelector('#player-side');
   const menuPop = root.querySelector('#menu-pop');
-  const centerPlay = root.querySelector('#center-play');
-
-  if (!media) return;
+  const centerControls = root.querySelector('#center-controls');
+  const embedHeader = root.querySelector('#embed-header');
+  
   let currentMode = initialMode;
+  let controlsVisible = true;
+  let controlsTimeout;
+  let seekingUser = false;
 
-  // Subs (sólo si video y url disponible)
+  // Ajuste específico para modo embed: ocultar controles inferiores y centro al inicio?
+  if (embed) {
+    // Por defecto en embed, los controles están visibles y se ocultan tras inactividad
+    const ctrlGroup = root.querySelector('.player-controls');
+    if (ctrlGroup) ctrlGroup.classList.add('visible');
+    if (centerControls) centerControls.classList.add('visible');
+  }
+
+  // Subtítulos para video
   if (currentMode === 'video' && ep.subtitlesUrl && !media.querySelector('track')) {
     const tr = document.createElement('track');
     tr.kind = 'subtitles'; tr.src = ep.subtitlesUrl; tr.srclang = 'es'; tr.label = 'Español'; tr.default = true;
     media.appendChild(tr);
   }
 
-  // Restore progress (sólo si NO viene reciclado de PIP — ya tiene tiempo)
+  // Restaurar progreso (excepto si viene reciclado desde PIP)
   const prog = getProgress(ep.id);
   if (prog && prog.duration && prog.progress < prog.duration - 5 && media.currentTime < 1) {
     const restore = () => { try { media.currentTime = prog.progress; } catch {} };
@@ -267,23 +302,28 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
     else media.addEventListener('loadedmetadata', restore, { once: true });
   }
 
-  // Sync UI inicial
+  // Sincronizar icono de play/pause
   const syncToggle = () => {
-    btnToggle.innerHTML = media.paused ? ICONS.play : ICONS.pause;
-    centerPlay.classList.toggle('hidden', !media.paused);
+    const isPaused = media.paused;
+    const playPauseIcon = isPaused ? ICONS.play : ICONS.pause;
+    if (btnToggle) btnToggle.innerHTML = playPauseIcon;
+    if (centerControls) {
+      const centerPlayBtn = centerControls.querySelector('[data-act="toggle"]');
+      if (centerPlayBtn) centerPlayBtn.innerHTML = playPauseIcon;
+    }
+    if (!embed) {
+      const centerPlayOriginal = root.querySelector('#center-play');
+      if (centerPlayOriginal) centerPlayOriginal.innerHTML = playPauseIcon;
+    }
   };
   syncToggle();
 
-  // Autoplay inteligente
+  // Auto-play
   const attemptPlay = () => {
     media.play().catch(() => {
-      // Bloqueado por autoplay: probar muteado
       media.muted = true;
-      btnMute.innerHTML = ICONS.mute;
-      media.play().catch(() => {
-        // Mostrar overlay click
-        centerPlay.classList.remove('hidden');
-      });
+      if (btnMute) btnMute.innerHTML = ICONS.mute;
+      media.play().catch(() => {});
     });
   };
   if (media.paused) {
@@ -291,14 +331,14 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
     else media.addEventListener('canplay', attemptPlay, { once: true });
   }
 
-  // Errores de carga
+  // Manejo de errores
   media.addEventListener('error', () => {
     console.warn('Media error', media.error);
-    centerPlay.innerHTML = `<div style="font-size:14px;text-align:center;padding:20px;">⚠️ No se pudo cargar el medio</div>`;
-    centerPlay.classList.remove('hidden');
+    const centerDiv = root.querySelector('#center-controls');
+    if (centerDiv) centerDiv.innerHTML = `<div style="font-size:14px;text-align:center;padding:20px;">⚠️ No se pudo cargar el medio</div>`;
   });
 
-  // Eventos
+  // Eventos de tiempo y buffer
   media.addEventListener('play', () => { syncToggle(); updateMediaSession(ep, media); area.classList.add('playing'); });
   media.addEventListener('pause', syncToggle);
   media.addEventListener('timeupdate', () => {
@@ -322,12 +362,11 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
     if (queueIndex < queue.length - 1) ctx.navigate(queue[queueIndex + 1].detailUrl);
   });
   media.addEventListener('volumechange', () => {
-    btnMute.innerHTML = (media.muted || media.volume === 0) ? ICONS.mute : ICONS.vol;
+    if (btnMute) btnMute.innerHTML = (media.muted || media.volume === 0) ? ICONS.mute : ICONS.vol;
     vol.value = media.muted ? 0 : media.volume;
   });
 
-  // Seek (drag)
-  let seekingUser = false;
+  // Seek interactivo
   seek.addEventListener('input', () => {
     seekingUser = true;
     const pct = seek.value / 10;
@@ -340,38 +379,100 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
     seekingUser = false;
   });
 
+  // Volumen
   vol.value = media.muted ? 0 : media.volume;
   vol.addEventListener('input', () => {
     media.volume = parseFloat(vol.value);
     media.muted = media.volume === 0;
   });
 
-  // Click central / video para play-pause
-  const togglePlay = () => { media.paused ? media.play() : media.pause(); };
-  centerPlay.addEventListener('click', togglePlay);
-  if (currentMode === 'video') {
-    media.addEventListener('click', togglePlay);
-    media.addEventListener('dblclick', () => area.requestFullscreen?.());
+  // Función para mostrar/ocultar controles en embed
+  const showControls = () => {
+    if (!embed) return;
+    const ctrlGroup = root.querySelector('.player-controls');
+    if (ctrlGroup) ctrlGroup.classList.add('visible');
+    if (centerControls) centerControls.classList.add('visible');
+    if (embedHeader) embedHeader.classList.add('visible');
+    clearTimeout(controlsTimeout);
+    if (!media.paused) {
+      controlsTimeout = setTimeout(() => {
+        if (ctrlGroup) ctrlGroup.classList.remove('visible');
+        if (centerControls) centerControls.classList.remove('visible');
+        if (embedHeader) embedHeader.classList.remove('visible');
+      }, 3000);
+    }
+  };
+  const hideControls = () => {
+    if (!embed) return;
+    const ctrlGroup = root.querySelector('.player-controls');
+    if (ctrlGroup) ctrlGroup.classList.remove('visible');
+    if (centerControls) centerControls.classList.remove('visible');
+    if (embedHeader) embedHeader.classList.remove('visible');
+    clearTimeout(controlsTimeout);
+  };
+
+  // Manejo del clic en el área del reproductor (diferente para embed y normal)
+  const togglePlayPause = () => { media.paused ? media.play() : media.pause(); };
+  const onAreaClick = (e) => {
+    // Evitar que clic en botones o controles dispare el toggle de controles/play
+    if (e.target.closest('.ctrl') || e.target.closest('.ctrl-center') || e.target.closest('.menu-wrap') || e.target.closest('.volume-wrap')) return;
+    if (embed) {
+      // En embed: alternar visibilidad de controles
+      const ctrlGroup = root.querySelector('.player-controls');
+      const isVisible = ctrlGroup?.classList.contains('visible');
+      if (isVisible) hideControls();
+      else showControls();
+    } else {
+      // Modo normal: pausar/reproducir
+      togglePlayPause();
+    }
+  };
+  area.addEventListener('click', onAreaClick);
+
+  // Hover para mostrar controles en embed
+  if (embed) {
+    area.addEventListener('mousemove', showControls);
+    area.addEventListener('mouseleave', () => {
+      if (!media.paused) {
+        const ctrlGroup = root.querySelector('.player-controls');
+        if (ctrlGroup) ctrlGroup.classList.remove('visible');
+        if (centerControls) centerControls.classList.remove('visible');
+        if (embedHeader) embedHeader.classList.remove('visible');
+      }
+    });
+    // Mostrar al inicio
+    showControls();
+  } else {
+    // En modo normal, auto-ocultar controles inferiores cuando no hay mouse
+    let hideTimer;
+    const showNormalControls = () => {
+      area.classList.add('show-controls');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => { if (!media.paused) area.classList.remove('show-controls'); }, 2800);
+    };
+    area.addEventListener('mousemove', showNormalControls);
+    area.addEventListener('mouseleave', () => area.classList.remove('show-controls'));
   }
 
-  // Controles
+  // Acciones de botones (controles)
   root.querySelectorAll('[data-act]').forEach(b => {
     b.addEventListener('click', (e) => {
       e.stopPropagation();
       const act = b.dataset.act;
-      if (act === 'toggle') togglePlay();
+      if (act === 'toggle') togglePlayPause();
       else if (act === 'back10') media.currentTime = Math.max(0, media.currentTime - 10);
       else if (act === 'fwd10') media.currentTime = Math.min(media.duration || 0, media.currentTime + 10);
       else if (act === 'prev' && queueIndex > 0) ctx.navigate(queue[queueIndex - 1].detailUrl);
       else if (act === 'next' && queueIndex < queue.length - 1) ctx.navigate(queue[queueIndex + 1].detailUrl);
-      else if (act === 'mute') { media.muted = !media.muted; }
+      else if (act === 'mute') media.muted = !media.muted;
       else if (act === 'switch-mode') {
         const newMode = currentMode === 'video' ? 'audio' : 'video';
         currentMode = newMode;
-        switchMode(area, ep, newMode, media);
+        const modeBtn = root.querySelector('#btn-mode');
+        if (modeBtn) modeBtn.innerHTML = newMode === 'video' ? ICONS.modeVideo : ICONS.modeAudio;
+        switchMode(area, ep, newMode, media, ctx);
       }
       else if (act === 'toggle-queue') toggleSidePanel(side, sideInner, 'queue', ep, queue, ctx);
-      else if (act === 'info') toggleSidePanel(side, sideInner, 'info', ep, queue, ctx);
       else if (act === 'minimize') {
         ctx.minimizeToPip?.();
         ctx.navigate('/');
@@ -380,7 +481,7 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
         if (document.fullscreenElement) document.exitFullscreen();
         else area.requestFullscreen?.();
       }
-      else if (act === 'menu') { e.stopPropagation(); menuPop.classList.toggle('open'); }
+      else if (act === 'menu') menuPop.classList.toggle('open');
       else if (act === 'subs' && ep.subtitlesUrl) {
         const tr = media.textTracks[0];
         if (tr) tr.mode = tr.mode === 'showing' ? 'hidden' : 'showing';
@@ -388,7 +489,7 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
     });
   });
 
-  // Velocidad/calidad
+  // Velocidad y calidad
   root.querySelectorAll('[data-rate]').forEach(b => {
     b.addEventListener('click', () => {
       media.playbackRate = parseFloat(b.dataset.rate);
@@ -414,10 +515,10 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
   };
   document.addEventListener('click', outsideClose);
 
-  // Teclado
+  // Teclado global (solo en modo normal? En embed también funcionará espacio para play/pause)
   const onKey = (e) => {
     if (e.target.matches('input, textarea')) return;
-    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'Space') { e.preventDefault(); togglePlayPause(); }
     else if (e.code === 'ArrowLeft') media.currentTime = Math.max(0, media.currentTime - 10);
     else if (e.code === 'ArrowRight') media.currentTime = Math.min(media.duration || 0, media.currentTime + 10);
     else if (e.code === 'ArrowUp') { e.preventDefault(); media.volume = Math.min(1, media.volume + 0.05); }
@@ -427,23 +528,14 @@ function setupPlayer(root, media, ep, queue, queueIndex, ctx, initialMode) {
   };
   document.addEventListener('keydown', onKey);
 
-  // Auto-hide controles
-  let hideT;
-  const showCtrls = () => {
-    area.classList.add('show-controls');
-    clearTimeout(hideT);
-    hideT = setTimeout(() => { if (!media.paused) area.classList.remove('show-controls'); }, 2800);
-  };
-  area.addEventListener('mousemove', showCtrls);
-  area.addEventListener('mouseleave', () => area.classList.remove('show-controls'));
-
-  // Cleanup
+  // Limpieza al destruir
   active._cleanup = () => {
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('click', outsideClose);
+    area.removeEventListener('click', onAreaClick);
   };
 
-  // Exponer
+  // Exponer control al contexto global (para PIP)
   ctx.registerPlayer?.({
     media, episodio: ep, queue, queueIndex, mode: currentMode,
     play: () => media.play(), pause: () => media.pause(),
@@ -459,7 +551,7 @@ function setMediaSrc(media, ep, mode) {
   else if (ep.mediaVideo) media.src = ep.mediaVideo;
 }
 
-function switchMode(area, ep, newMode, oldMedia) {
+function switchMode(area, ep, newMode, oldMedia, ctx) {
   const t = oldMedia.currentTime;
   const wasPlaying = !oldMedia.paused;
   const vol = oldMedia.volume;
@@ -482,8 +574,8 @@ function switchMode(area, ep, newMode, oldMedia) {
     if (wasPlaying) media.play();
   }, { once: true });
 
-  // Re-bind: el setup más simple: re-render completo de los handlers no, mejor recargar la vista
-  active.ctx.navigate(active.episodio.detailUrl);
+  // Recargar la vista para mantener la consistencia (reutilizamos navegación)
+  ctx.navigate(ep.detailUrl);
 }
 
 function toggleSidePanel(side, inner, kind, ep, queue, ctx) {
