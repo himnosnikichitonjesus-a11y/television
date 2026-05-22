@@ -1,5 +1,20 @@
 {
+  "redirects": [
+    {
+      "source": "/2025/01/la-semana-santa.html",
+      "destination": "/semana-santa",
+      "permanent": true
+    },
+    {
+      "source": "/2024/12/profecia-de-la-estrella-de-belen.html",
+      "destination": "/la-historia-del-nacimiento/la-profesia-de-isaias-nacimiento",
+      "permanent": true
+    }
+  ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
