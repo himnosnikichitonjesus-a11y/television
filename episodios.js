@@ -6,7 +6,7 @@ import { seriesRaw, episodiosRaw, slugify } from 'https://podcast.nikichitonjesu
 
 const seriesMap = Object.fromEntries(seriesRaw.map(s => [s.seriesid, s]));
 
-// Procesar episodios de la misma forma que el original
+// Procesar episodios EXACTAMENTE como en el archivo original de televisión
 const episodios = episodiosRaw.map(ep => {
   const hasVideo = !!ep.mediaVideo;
   const hasAudio = !!ep.mediaUrl;
@@ -35,27 +35,44 @@ const episodios = episodiosRaw.map(ep => {
   };
 });
 
+// Exportar series (tal cual vienen de la base)
 export const series = seriesRaw;
+
 export { slugify, episodios };
 
-// Funciones de acceso (igual que el original)
-export function getEpisodioById(id) { return episodios.find(ep => ep.id === id); }
+// Funciones de acceso (idénticas al original)
+export function getEpisodioById(id) {
+  return episodios.find(ep => ep.id === id);
+}
+
 export function getEpisodioByDetailUrl(url) {
   const clean = url.replace(/\/$/, '');
   return episodios.find(ep => ep.detailUrl === clean || ep.detailUrl === url);
 }
+
 export function getSerieByUrl(url) {
   const clean = url.replace(/\/$/, '');
   return series.find(s => s.url_serie === clean || s.url_serie === url);
 }
-export function getSerieById(seriesid) { return seriesMap[seriesid]; }
+
+export function getSerieById(seriesid) {
+  return seriesMap[seriesid];
+}
+
 export function getEpisodiosBySerieId(seriesid) {
   return episodios.filter(ep => ep.seriesid === seriesid)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 }
+
 export function getEpisodiosBySerieUrl(url) {
   const s = getSerieByUrl(url);
   return s ? getEpisodiosBySerieId(s.seriesid) : [];
 }
-export function getAllEpisodios() { return episodios; }
-export function getAllSeries() { return series; }
+
+export function getAllEpisodios() {
+  return episodios;
+}
+
+export function getAllSeries() {
+  return series;
+}
