@@ -63,7 +63,7 @@ function injectEmbedStyles() {
       inset: 0;
       width: 100%;
       height: 100dvh;
-      background: var(--stage-bg, #000);
+      background: #000;
       color: #fff;
       display: flex;
       overflow: hidden;
@@ -74,7 +74,7 @@ function injectEmbedStyles() {
     .nk-embed-stage {
       position: relative;
       flex: 1;
-      background: var(--stage-bg, #000);
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -86,7 +86,7 @@ function injectEmbedStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--stage-bg, #000);
+      background: #000;
     }
     .nk-embed-media video,
     .nk-embed-media audio {
@@ -103,7 +103,7 @@ function injectEmbedStyles() {
     .nk-embed-cover {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      background: radial-gradient(circle at center, rgba(30,30,40,.6), var(--stage-bg, #000) 70%);
+      background: radial-gradient(circle at center, rgba(30,30,40,.6), #000 70%);
     }
     .nk-embed-cover img {
       width: min(55vmin, 320px);
@@ -433,6 +433,7 @@ function destroyMedia(el) {
   try {
     el.pause();
     el.removeAttribute('src');
+    // Vaciar <source> hijos si existen
     while (el.firstChild) el.removeChild(el.firstChild);
     el.load();
   } catch {}
@@ -440,6 +441,7 @@ function destroyMedia(el) {
 }
 
 function killAnyLingeringMedia(exceptEl) {
+  // Barrido defensivo: pausa y libera cualquier <video>/<audio> huérfano en la página.
   document.querySelectorAll('video, audio').forEach((el) => {
     if (el === exceptEl) return;
     destroyMedia(el);
@@ -468,7 +470,7 @@ export function render(container, ctx) {
   const hasQueue = queue.length > 1;
 
   container.innerHTML = `
-    <div class="nk-embed" id="nk-embed" style="--stage-bg:${escapeAttr(episodio.bgColor || '#000')}" data-mode="${initialMode}">
+    <div class="nk-embed" id="nk-embed" data-mode="${initialMode}">
       <div class="nk-embed-stage" id="nk-stage">
 
         <div class="nk-embed-media" id="nk-media-host"></div>
@@ -555,22 +557,16 @@ function createMediaElement(mode, ep) {
   el.id = 'nk-media';
   el.preload = 'metadata';
   el.playsInline = true;
-  el.crossOrigin = 'anonymous';
+  // Eliminado: el.crossOrigin = 'anonymous';  // <--- CAUSA BLOQUEO CORS
   if (mode === 'video') el.poster = ep.coverUrl || '';
   setMediaSrc(el, ep, mode);
   return el;
 }
 
 function setMediaSrc(media, ep, mode) {
-  if (mode === 'video' && ep.mediaVideo) {
-    media.src = ep.mediaVideo;
-  } else if (ep.mediaUrl) {
-    media.src = ep.mediaUrl;
-  } else if (ep.mediaVideo) {
-    media.src = ep.mediaVideo;
-  }
-  // Forzar la recarga del medio
-  media.load();
+  if (mode === 'video' && ep.mediaVideo) media.src = ep.mediaVideo;
+  else if (ep.mediaUrl) media.src = ep.mediaUrl;
+  else if (ep.mediaVideo) media.src = ep.mediaVideo;
 }
 
 // ========== LÓGICA ==========
@@ -725,11 +721,8 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     });
   };
   if (media.paused) {
-    if (media.readyState >= 2) {
-      attemptPlay();
-    } else {
-      media.addEventListener('canplay', attemptPlay, { once: true });
-    }
+    if (media.readyState >= 2) attemptPlay();
+    else media.addEventListener('canplay', attemptPlay, { once: true });
   }
 
   // ---- Seek ----
