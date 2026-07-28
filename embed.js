@@ -562,9 +562,15 @@ function createMediaElement(mode, ep) {
 }
 
 function setMediaSrc(media, ep, mode) {
-  if (mode === 'video' && ep.mediaVideo) media.src = ep.mediaVideo;
-  else if (ep.mediaUrl) media.src = ep.mediaUrl;
-  else if (ep.mediaVideo) media.src = ep.mediaVideo;
+  if (mode === 'video' && ep.mediaVideo) {
+    media.src = ep.mediaVideo;
+  } else if (ep.mediaUrl) {
+    media.src = ep.mediaUrl;
+  } else if (ep.mediaVideo) {
+    media.src = ep.mediaVideo;
+  }
+  // Forzar la recarga del medio
+  media.load();
 }
 
 // ========== LÓGICA ==========
@@ -719,8 +725,11 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     });
   };
   if (media.paused) {
-    if (media.readyState >= 2) attemptPlay();
-    else media.addEventListener('canplay', attemptPlay, { once: true });
+    if (media.readyState >= 2) {
+      attemptPlay();
+    } else {
+      media.addEventListener('canplay', attemptPlay, { once: true });
+    }
   }
 
   // ---- Seek ----
