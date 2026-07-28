@@ -100,7 +100,7 @@ function injectStyles() {
 
     /* ===== Stage ===== */
     .player-stage {
-      background: var(--stage-bg, #0a0a0a);
+      background: #000;
       position: relative;
     }
     .player-area {
@@ -119,7 +119,7 @@ function injectStyles() {
     .media-host {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      background: var(--stage-bg, #000);
+      background: #000;
     }
     .media-host video,
     .media-host audio {
@@ -133,7 +133,7 @@ function injectStyles() {
     .player-audio-cover {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      background: radial-gradient(circle at center, rgba(30,30,40,.6), var(--stage-bg, #000) 70%);
+      background: radial-gradient(circle at center, rgba(30,30,40,.6), #000 70%);
     }
     .player-audio-cover img {
       width: min(45vmin, 280px);
@@ -339,7 +339,7 @@ function injectStyles() {
     /* Info debajo */
     .watch-info {
       padding: 20px 16px;
-      max-width: 1400px; margin: 0 auto;
+      max-width: 1200px; margin: 0 auto;
     }
     .watch-title {
       font-size: clamp(20px, 3vw, 28px);
@@ -379,7 +379,7 @@ function injectStyles() {
     }
     .watch-below {
       padding: 20px 16px 60px;
-      max-width: 1400px; margin: 0 auto;
+      max-width: 1200px; margin: 0 auto;
       display: grid;
       grid-template-columns: 1fr;
       gap: 24px;
@@ -388,12 +388,12 @@ function injectStyles() {
       grid-template-columns: 1fr;
     }
     @media (min-width: 960px) {
-      .watch-below.has-series { grid-template-columns: 1fr 360px; }
+      .watch-below.has-series { grid-template-columns: 1fr 340px; }
     }
 
     .suggest-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 14px;
     }
     .ep-card {
@@ -424,16 +424,16 @@ function injectStyles() {
     .ep-card .meta { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 4px; }
 
     .series-panel {
-      background: rgba(255,255,255,.04);
+      background: rgba(255,255,255,.03);
       border-radius: 12px;
-      padding: 16px;
+      padding: 14px;
     }
     .series-panel .s-cover {
       width: 100%; aspect-ratio: 16 / 9;
       background-size: cover; background-position: center;
       border-radius: 8px; margin-bottom: 12px;
     }
-    .series-panel .s-title { font-weight: 700; font-size: 18px; margin-bottom: 4px; color: #fff; }
+    .series-panel .s-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; color: #fff; }
     .series-panel .s-desc { font-size: 13px; color: rgba(255,255,255,.65); margin-bottom: 12px; }
     .series-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -564,24 +564,13 @@ function buildContext(ep) {
 
 // ========== RENDER ==========
 export function render(container, ctx) {
-  // Teardown previo solo si el episodio es diferente al que está activo
+  // Teardown previo — obligatorio para no arrastrar audio del episodio anterior
   if (active) {
-    if (active.episodio.id !== ctx.episodio.id) {
-      // Destruir el medio anterior si es otro episodio
-      try { active._cleanup?.(); } catch {}
-      destroyMedia(active.media);
-      active = null;
-    } else {
-      // Si es el mismo episodio, solo limpiamos eventos pero conservamos el medio
-      try { active._cleanup?.(); } catch {}
-      // No destruimos el medio, lo reutilizaremos
-    }
+    try { active._cleanup?.(); } catch {}
+    destroyMedia(active.media);
+    active = null;
   }
-
-  // Si no hay active o se destruyó, aseguramos que no queden medios sueltos
-  if (!active) {
-    killAnyLingeringMedia();
-  }
+  killAnyLingeringMedia();
 
   injectStyles();
   window.scrollTo(0, 0);
@@ -595,9 +584,6 @@ export function render(container, ctx) {
     : (episodio.hasVideo && episodio.initialMode !== 'audio' ? 'video' : 'audio');
   const canSwitch = episodio.hasVideo && episodio.hasAudio;
   const hasQueue = queue.length > 1;
-
-  // Si ya tenemos un medio (porque es el mismo episodio y no se destruyó), lo usamos
-  let existingMedia = active ? active.media : null;
 
   container.innerHTML = `
     <div class="watch">
@@ -691,32 +677,9 @@ export function render(container, ctx) {
   `;
 
   const host = container.querySelector('#media-host');
+  const media = reclaim || createMediaElement(initialMode, episodio);
+  mountMedia(host, media, initialMode, episodio);
 
-  let media;
-  if (existingMedia) {
-    // Reutilizar el medio existente
-    media = existingMedia;
-    // Si estaba en PIP, lo movemos al host
-    host.appendChild(media);
-    // Ajustar clase y modo visual según el modo actual
-    const mode = media.tagName === 'VIDEO' ? 'video' : 'audio';
-    if (mode === 'audio') {
-      host.innerHTML = '';
-      const cover = document.createElement('div');
-      cover.className = 'player-audio-cover';
-      cover.innerHTML = `<img src="${escapeAttr(episodio.coverUrl)}" alt="${escapeAttr(episodio.title)}"/>`;
-      host.appendChild(cover);
-      host.appendChild(media);
-    }
-    // Actualizar el modo actual en el área
-    container.querySelector('#player-area').dataset.mode = mode;
-  } else {
-    // Crear nuevo medio
-    media = createMediaElement(initialMode, episodio);
-    mountMedia(host, media, initialMode, episodio);
-  }
-
-  // Actualizar estado activo
   active = { episodio, container, ctx, queue, queueIndex, media };
   setupPlayer(container, media, episodio, queue, queueIndex, ctx, initialMode);
   setupActions(container, episodio, ctx);
@@ -1080,8 +1043,6 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     area.removeEventListener('touchstart', wake);
     area.removeEventListener('click', onAreaClick);
     unbindMedia(media);
-    // NO destruimos el medio, solo limpiamos eventos y referencias.
-    // El medio será reutilizado o movido a PIP por el contexto.
   };
 
   ctx.registerPlayer?.({
@@ -1199,9 +1160,8 @@ function formatDate(d) {
 export function teardown() {
   if (active) {
     try { active._cleanup?.(); } catch {}
-    // No destruimos el medio, solo limpiamos eventos.
-    // El medio se conserva para ser usado en PIP por el contexto.
+    destroyMedia(active.media);
     active = null;
   }
-  // No matamos medios huérfanos porque podrían estar en PIP.
+  killAnyLingeringMedia();
 }
