@@ -129,6 +129,11 @@ function injectEmbedStyles() {
       pointer-events: none;
       transition: opacity .35s ease;
     }
+    .nk-embed-header img.logo,
+    .nk-embed-header .title {
+      pointer-events: auto;
+      cursor: pointer;
+    }
     .nk-embed-header img.logo {
       height: clamp(22px, 4vw, 36px);
       width: auto;
@@ -433,7 +438,6 @@ function destroyMedia(el) {
   try {
     el.pause();
     el.removeAttribute('src');
-    // Vaciar <source> hijos si existen
     while (el.firstChild) el.removeChild(el.firstChild);
     el.load();
   } catch {}
@@ -441,7 +445,6 @@ function destroyMedia(el) {
 }
 
 function killAnyLingeringMedia(exceptEl) {
-  // Barrido defensivo: pausa y libera cualquier <video>/<audio> huérfano en la página.
   document.querySelectorAll('video, audio').forEach((el) => {
     if (el === exceptEl) return;
     destroyMedia(el);
@@ -450,7 +453,6 @@ function killAnyLingeringMedia(exceptEl) {
 
 // ========== RENDER ==========
 export function render(container, ctx) {
-  // 1. Teardown de instancia previa antes de nada
   if (active) {
     try { active._cleanup?.(); } catch {}
     destroyMedia(active.media);
@@ -557,7 +559,7 @@ function createMediaElement(mode, ep) {
   el.id = 'nk-media';
   el.preload = 'metadata';
   el.playsInline = true;
-  // Eliminado: el.crossOrigin = 'anonymous';  // <--- CAUSA BLOQUEO CORS
+  // Eliminado crossOrigin para evitar bloqueos CORS
   if (mode === 'video') el.poster = ep.coverUrl || '';
   setMediaSrc(el, ep, mode);
   return el;
@@ -577,7 +579,6 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
   const center = root.querySelector('#nk-center');
   const bar = root.querySelector('#nk-bar');
   const status = root.querySelector('#nk-status');
-  const seekWrap = root.querySelector('#nk-seek');
   const seekInput = root.querySelector('#nk-seek-input');
   const seekFill = root.querySelector('#nk-seek-fill');
   const seekBuf = root.querySelector('#nk-seek-buffer');
@@ -592,6 +593,8 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
   const centerToggle = center.querySelector('[data-act="toggle"]');
   const btnMode = root.querySelector('#nk-mode');
   const host = root.querySelector('#nk-media-host');
+  const logo = header.querySelector('.logo');
+  const titleEl = header.querySelector('.title');
 
   let media = initialMedia;
   let currentMode = initialMode;
@@ -617,7 +620,81 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     scheduleHide();
   };
 
-  // Toggle por clic en el stage (no sobre controles)
+  // ---- Lógica de toques múltiples (táctil) ----
+  let lastTapTime = 0;
+  let tapCount = 0;
+  let tapRegion = null;
+  let tapTimer = null;
+  let preventClick = false;
+
+  const handleMultipleTaps = (count, region) => {
+    const seconds = (count - 1) * 10; // doble→10, triple→20, cuádruple→30...
+    if (region === 'right') {
+      media.currentTime = Math.min(media.duration || 0, media.currentTime + seconds);
+    } else if (region === 'left') {
+      media.currentTime = Math.max(0, media.currentTime - seconds);
+    }
+    // Mostrar un pequeño feedback visual (opcional)
+    toastFeedback(region, seconds);
+  };
+
+  // Función auxiliar para feedback (puedes usar un toast o nada)
+  function toastFeedback(region, seconds) {
+    // Simple: actualizar el tiempo mostrado brevemente
+    const msg = region === 'right' ? `+${seconds}s` : `-${seconds}s`;
+    // Podrías mostrar un mensaje flotante, pero no es obligatorio.
+  }
+
+  const onPointerDown = (e) => {
+    // Si el toque es sobre un botón o control, no interferir
+    if (e.target.closest('button, .nk-embed-btn, .nk-embed-btn-center, .nk-embed-seek, .nk-embed-vol, .nk-embed-menu')) {
+      return;
+    }
+    // Solo para eventos táctiles
+    if (e.pointerType !== 'touch') return;
+
+    const rect = stage.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const region = x < rect.width / 2 ? 'left' : 'right';
+    const now = performance.now();
+
+    if (now - lastTapTime < 300 && region === tapRegion) {
+      tapCount++;
+      lastTapTime = now;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(() => {
+        if (tapCount >= 2) {
+          preventClick = true;
+          handleMultipleTaps(tapCount, tapRegion);
+        } else {
+          // Toque simple: alternar controles
+          setControlsVisible(!controlsVisible);
+          if (controlsVisible) scheduleHide();
+        }
+        tapCount = 0;
+        tapRegion = null;
+        preventClick = false;
+      }, 300);
+    } else {
+      // Reiniciar contador
+      tapCount = 1;
+      tapRegion = region;
+      lastTapTime = now;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(() => {
+        // Solo un toque en este período
+        setControlsVisible(!controlsVisible);
+        if (controlsVisible) scheduleHide();
+        tapCount = 0;
+        tapRegion = null;
+        preventClick = false;
+      }, 300);
+    }
+  };
+
+  stage.addEventListener('pointerdown', onPointerDown);
+
+  // ---- Toggle por clic en el stage (mouse) ----
   const onStageClick = (e) => {
     if (
       e.target.closest('.nk-embed-btn') ||
@@ -626,6 +703,11 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
       e.target.closest('.nk-embed-menu') ||
       e.target.closest('.nk-embed-vol')
     ) return;
+    // Si se detectó un toque múltiple, ignorar este click
+    if (preventClick) {
+      preventClick = false;
+      return;
+    }
     setControlsVisible(!controlsVisible);
     if (controlsVisible) scheduleHide();
   };
@@ -745,7 +827,7 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     media.muted = media.volume === 0;
   });
 
-  // ---- Cambio de modo audio<->video (SIN duplicar sonido) ----
+  // ---- Cambio de modo audio<->video ----
   const switchMode = (newMode) => {
     if (newMode === currentMode) return;
     const t = media.currentTime;
@@ -753,14 +835,10 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     const v = media.volume;
     const muted = media.muted;
 
-    // 1. Destruir el medio actual COMPLETAMENTE
     unbindMedia(media);
     destroyMedia(media);
-
-    // 2. Barrer cualquier medio residual
     killAnyLingeringMedia();
 
-    // 3. Crear y montar el nuevo
     const next = createMediaElement(newMode, ep);
     mountMedia(host, next, newMode, ep);
     next.volume = v;
@@ -794,8 +872,15 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
         case 'switch-mode': switchMode(currentMode === 'video' ? 'audio' : 'video'); break;
         case 'menu':        menuPop.classList.toggle('open'); break;
         case 'fullscreen':
-          if (!document.fullscreenElement) embed.requestFullscreen?.();
-          else document.exitFullscreen();
+          if (!document.fullscreenElement) {
+            embed.requestFullscreen?.().then(() => {
+              if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+              }
+            }).catch(() => {});
+          } else {
+            document.exitFullscreen();
+          }
           break;
       }
       wake();
@@ -820,6 +905,11 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
   document.addEventListener('fullscreenchange', () => {
     if (!btnFull) return;
     btnFull.innerHTML = document.fullscreenElement ? ICONS.fullExit : ICONS.full;
+    if (document.fullscreenElement) {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    }
   });
 
   // Teclado
@@ -830,8 +920,11 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     else if (e.code === 'ArrowRight') media.currentTime = Math.min(media.duration || 0, media.currentTime + 10);
     else if (e.key.toLowerCase() === 'm') media.muted = !media.muted;
     else if (e.key.toLowerCase() === 'f') {
-      if (!document.fullscreenElement) embed.requestFullscreen?.();
-      else document.exitFullscreen();
+      if (!document.fullscreenElement) {
+        embed.requestFullscreen?.();
+      } else {
+        document.exitFullscreen();
+      }
     }
     wake();
   };
@@ -844,11 +937,22 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     media.appendChild(tr);
   }
 
-  // Cleanup del reproductor
+  // ---- Redirección del logo y título ----
+  const navigateToEpisode = () => {
+    const targetUrl = ep.detailUrl; // ej: "/episodio/123"
+    if (ctx.navigate) ctx.navigate(targetUrl);
+    else window.location.href = targetUrl;
+  };
+  logo.addEventListener('click', (e) => { e.stopPropagation(); navigateToEpisode(); });
+  titleEl.addEventListener('click', (e) => { e.stopPropagation(); navigateToEpisode(); });
+
+  // ---- Cleanup ----
   active._cleanup = () => {
     clearTimeout(hideTimer);
+    clearTimeout(tapTimer);
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('click', outsideClose);
+    stage.removeEventListener('pointerdown', onPointerDown);
     stage.removeEventListener('click', onStageClick);
     stage.removeEventListener('mousemove', wake);
     stage.removeEventListener('touchstart', wake);
@@ -866,7 +970,6 @@ function setupPlayer(root, initialMedia, ep, queue, queueIndex, ctx, initialMode
     prev: () => queueIndex > 0 && ctx.navigate(queue[queueIndex - 1].detailUrl)
   });
 
-  // Inicial: ocultar spinner cuando ya haya datos
   if (media.readyState >= 2) hideStatus();
 }
 
